@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel — CliniSalud</title>
+  <style>
+    :root {
+      --azul: #0e5aa7;
+      --azul-oscuro: #0a3d73;
+      --celeste: #e8f2fb;
+      --verde: #1a9e6e;
+      --texto: #1f2937;
+      --gris: #6b7280;
+      --borde: #e5e7eb;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f4f7fb; color: var(--texto);
+      display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 240px; background: var(--azul-oscuro); color: #fff;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .logo {
+      display: flex; align-items: center; gap: .5rem;
+      font-weight: 700; padding: 1.2rem 1.2rem; font-size: 1.1rem;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+    .logo .cruz {
+      background: var(--verde); width: 30px; height: 30px;
+      border-radius: 8px; display: grid; place-items: center;
+    }
+    .menu { flex: 1; padding: 1rem .8rem; }
+    .menu button {
+      display: flex; align-items: center; gap: .7rem; width: 100%;
+      background: none; border: none; color: #c7d8ec;
+      padding: .7rem .9rem; border-radius: 8px; font-size: .95rem;
+      cursor: pointer; text-align: left; margin-bottom: .2rem;
+    }
+    .menu button:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .menu button.activo { background: var(--azul); color: #fff; font-weight: 600; }
+    .pie-usuario {
+      padding: 1rem 1.2rem; border-top: 1px solid rgba(255,255,255,.12);
+      font-size: .85rem;
+    }
+    .pie-usuario .nombre { font-weight: 600; }
+    .pie-usuario .rol { color: #9fc3e8; text-transform: capitalize; }
+    .pie-usuario button {
+      margin-top: .6rem; width: 100%; padding: .5rem;
+      background: rgba(255,255,255,.1); color: #fff; border: none;
+      border-radius: 6px; cursor: pointer; font-size: .85rem;
+    }
+    .pie-usuario button:hover { background: rgba(255,255,255,.2); }
+
+    .principal { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .barra {
+      background: #fff; padding: 1rem 2rem; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .barra h1 { font-size: 1.2rem; color: var(--azul-oscuro); }
+    .barra .fecha { color: var(--gris); font-size: .9rem; }
+    .contenido { padding: 2rem; flex: 1; }
+
+    .tarjetas {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.2rem; margin-bottom: 2rem;
+    }
+    .tarjeta-stat {
+      background: #fff; border-radius: 12px; padding: 1.2rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); border-left: 4px solid var(--azul);
+    }
+    .tarjeta-stat .valor { font-size: 1.8rem; font-weight: 700; color: var(--azul-oscuro); }
+    .tarjeta-stat .etiqueta { color: var(--gris); font-size: .88rem; }
+
+    .panel {
+      background: #fff; border-radius: 12px; padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06); margin-bottom: 1.5rem;
+    }
+    .panel h2 { font-size: 1.05rem; color: var(--azul-oscuro); margin-bottom: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th { text-align: left; color: var(--gris); font-weight: 600; padding: .5rem .6rem; border-bottom: 2px solid var(--borde); }
+    td { padding: .6rem; border-bottom: 1px solid var(--borde); }
+    .badge { font-size: .75rem; padding: .15rem .6rem; border-radius: 999px; font-weight: 600; }
+    .badge-verde { background: #d9f2e6; color: var(--verde); }
+    .badge-azul { background: var(--celeste); color: var(--azul); }
+    .badge-amarillo { background: #fdf3d7; color: #a16207; }
+    .badge-gris { background: #e5e7eb; color: var(--gris); }
+
+    .aviso-demo {
+      background: #fdf3d7; border: 1px solid #f5d97e; color: #854d0e;
+      padding: .8rem 1rem; border-radius: 8px; font-size: .88rem; margin-bottom: 1.5rem;
+    }
+    .vacio { color: var(--gris); text-align: center; padding: 2rem; font-size: .95rem; }
+
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; }
+      .menu { display: flex; flex-wrap: wrap; }
+      .menu button { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo"><span class="cruz">✚</span> CliniSalud</div>
+    <nav class="menu" id="menu"></nav>
+    <div class="pie-usuario">
+      <div class="nombre" id="usuario-nombre">Cargando…</div>
+      <div class="rol" id="usuario-rol"></div>
+      <button id="btn-salir">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <main class="principal">
+    <div class="barra">
+      <h1 id="titulo-vista">Panel principal</h1>
+      <span class="fecha" id="fecha-hoy"></span>
+    </div>
+    <div class="contenido">
+      <div class="aviso-demo" id="aviso-demo">
+        Estás viendo <b>datos de ejemplo</b>. Configurá Supabase en <code>js/config.js</code> para conectar la base de datos real.
+      </div>
+      <div id="vista"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

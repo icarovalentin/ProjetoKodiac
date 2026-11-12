@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CliniSalud — Sistema de gestión para clínicas y consultorios</title>
+  <meta name="description" content="Gestión de agendas médicas, historias clínicas, recetas y certificados. Sistema para clínicas y consultorios en Paraguay." />
+  <style>
+    :root {
+      --azul: #0e5aa7;
+      --azul-oscuro: #0a3d73;
+      --celeste: #e8f2fb;
+      --verde: #1a9e6e;
+      --texto: #1f2937;
+      --gris: #6b7280;
+      --blanco: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: var(--texto);
+      background: var(--blanco);
+      line-height: 1.6;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 5%;
+      background: var(--blanco);
+      position: sticky; top: 0; z-index: 10;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .logo { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.25rem; color: var(--azul); }
+    .logo .cruz {
+      background: var(--azul); color: #fff; width: 34px; height: 34px;
+      border-radius: 8px; display: grid; place-items: center; font-size: 1.1rem;
+    }
+    nav a { color: var(--texto); text-decoration: none; margin-left: 1.5rem; font-size: .95rem; }
+    nav a:hover { color: var(--azul); }
+    .btn {
+      display: inline-block; padding: .7rem 1.6rem; border-radius: 8px;
+      text-decoration: none; font-weight: 600; transition: background .2s;
+    }
+    .btn-primario { background: var(--azul); color: #fff; }
+    .btn-primario:hover { background: var(--azul-oscuro); }
+    .btn-contorno { border: 2px solid var(--azul); color: var(--azul); }
+    .btn-contorno:hover { background: var(--celeste); }
+
+    .hero {
+      display: grid; grid-template-columns: 1.1fr 1fr; gap: 3rem;
+      align-items: center; padding: 4rem 5%;
+      background: linear-gradient(135deg, var(--celeste) 0%, #f7fbff 100%);
+    }
+    .hero h1 { font-size: 2.4rem; line-height: 1.2; color: var(--azul-oscuro); }
+    .hero h1 span { color: var(--verde); }
+    .hero p { margin: 1.2rem 0 2rem; font-size: 1.1rem; color: var(--gris); max-width: 34rem; }
+    .hero-acciones { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hero-visual {
+      background: var(--blanco); border-radius: 16px; box-shadow: 0 10px 30px rgba(14,90,167,.15);
+      padding: 1.5rem; font-size: .9rem;
+    }
+    .hero-visual .fila {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .65rem .9rem; border-radius: 8px; margin-bottom: .5rem; background: #f8fafc;
+    }
+    .hero-visual .fila b { color: var(--azul-oscuro); }
+    .badge { font-size: .75rem; padding: .15rem .6rem; border-radius: 999px; font-weight: 600; }
+    .badge-verde { background: #d9f2e6; color: var(--verde); }
+    .badge-azul { background: var(--celeste); color: var(--azul); }
+    .badge-amarillo { background: #fdf3d7; color: #a16207; }
+
+    .seccion { padding: 3.5rem 5%; }
+    .seccion h2 { text-align: center; color: var(--azul-oscuro); font-size: 1.9rem; margin-bottom: .5rem; }
+    .seccion .sub { text-align: center; color: var(--gris); margin-bottom: 2.5rem; }
+    .grid-modulos {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+    }
+    .modulo {
+      background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px;
+      padding: 1.5rem; transition: transform .2s, box-shadow .2s;
+    }
+    .modulo:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(14,90,167,.12); }
+    .modulo .icono { font-size: 2rem; }
+    .modulo h3 { color: var(--azul-oscuro); margin: .6rem 0 .4rem; }
+    .modulo p { color: var(--gris); font-size: .95rem; }
+
+    .roles { background: var(--azul-oscuro); color: #fff; }
+    .roles h2 { color: #fff; }
+    .roles .sub { color: #c7d8ec; }
+    .grid-roles {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+    }
+    .tarjeta-rol {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 12px; padding: 1.5rem;
+    }
+    .tarjeta-rol h3 { margin-bottom: .5rem; }
+    .tarjeta-rol ul { list-style: none; }
+    .tarjeta-rol li { font-size: .92rem; color: #dce8f5; padding: .2rem 0; }
+    .tarjeta-rol li::before { content: "✓ "; color: var(--verde); font-weight: 700; }
+
+    footer {
+      background: #0b2545; color: #9fb3c8; text-align: center;
+      padding: 1.5rem 5%; font-size: .9rem;
+    }
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; padding: 2.5rem 5%; }
+      nav a { margin-left: .8rem; }
+      .hero h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="cruz">✚</span> CliniSalud</div>
+    <nav>
+      <a href="#modulos">Módulos</a>
+      <a href="#roles">Roles</a>
+      <a href="login.html" class="btn btn-primario">Ingresar al sistema</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Organizá tu clínica:<br />agenda, historias clínicas <span>y mucho más</span></h1>
+      <p>
+        Sistema de gestión para clínicas y consultorios en Paraguay. Agendas de médicos,
+        prontuario del paciente, emisión de recetas y certificados médicos, y notificaciones
+        directas al paciente. Todo en un solo lugar.
+      </p>
+      <div class="hero-acciones">
+        <a href="login.html" class="btn btn-primario">Ingresar al sistema</a>
+        <a href="#modulos" class="btn btn-contorno">Conocer los módulos</a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-label="Vista previa de la agenda del día">
+      <div class="fila"><b>08:00 — María González</b><span class="badge badge-verde">Confirmado</span></div>
+      <div class="fila"><b>08:30 — Juan Pérez</b><span class="badge badge-azul">Sala de espera</span></div>
+      <div class="fila"><b>09:00 — Ana Rojas</b><span class="badge badge-amarillo">Pendiente</span></div>
+      <div class="fila"><b>09:30 — Carlos López</b><span class="badge badge-verde">Confirmado</span></div>
+      <div class="fila"><b>10:00 — Luisa Cáceres</b><span class="badge badge-azul">Sala de espera</span></div>
+    </div>
+  </section>
+
+  <section class="seccion" id="modulos">
+    <h2>Módulos del sistema</h2>
+    <p class="sub">Todo lo que tu consultorio necesita, integrado.</p>
+    <div class="grid-modulos">
+      <div class="modulo">
+        <div class="icono">📅</div>
+        <h3>Agendas médicas</h3>
+        <p>Turnos por médico y especialidad, horarios, confirmaciones y sobreturnos. Vista diaria y semanal.</p>
+      </div>
+      <div class="modulo">
+        <div class="icono">📋</div>
+        <h3>Historia clínica y prontuario</h3>
+        <p>Ficha completa del paciente: consultas, antecedentes, diagnósticos y tratamientos, siempre disponible.</p>
+      </div>
+      <div class="modulo">
+        <div class="icono">💊</div>
+        <h3>Recetas digitales</h3>
+        <p>Emisión de recetas desde la consulta, con datos del médico, registro profesional y lista de medicamentos.</p>
+      </div>
+      <div class="modulo">
+        <div class="icono">📄</div>
+        <h3>Certificados médicos</h3>
+        <p>Certificados de reposo y de salud listos para imprimir, con fecha, duración y firma del profesional.</p>
+      </div>
+      <div class="modulo">
+        <div class="icono">🔔</div>
+        <h3>Notificaciones al paciente</h3>
+        <p>Recordatorios de turnos, resultados e informaciones del médico, enviadas directamente al paciente.</p>
+      </div>
+      <div class="modulo">
+        <div class="icono">👥</div>
+        <h3>Roles y permisos</h3>
+        <p>Cada usuario accede según su rol: médico, recepcionista, enfermería o administrador.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion roles" id="roles">
+    <h2>Un dashboard para cada rol</h2>
+    <p class="sub">Al ingresar, cada usuario ve lo que necesita para su trabajo.</p>
+    <div class="grid-roles">
+      <div class="tarjeta-rol">
+        <h3>🩺 Médico</h3>
+        <ul>
+          <li>Agenda del día</li>
+          <li>Historia clínica del paciente</li>
+          <li>Recetas y certificados</li>
+          <li>Mensajes a pacientes</li>
+        </ul>
+      </div>
+      <div class="tarjeta-rol">
+        <h3>☎️ Recepcionista</h3>
+        <ul>
+          <li>Registro de pacientes</li>
+          <li>Gestión de turnos</li>
+          <li>Confirmaciones y avisos</li>
+          <li>Sala de espera</li>
+        </ul>
+      </div>
+      <div class="tarjeta-rol">
+        <h3>💉 Enfermería</h3>
+        <ul>
+          <li>Signos vitales</li>
+          <li>Preparación de pacientes</li>
+          <li>Aplicaciones y controles</li>
+          <li>Agenda compartida</li>
+        </ul>
+      </div>
+      <div class="tarjeta-rol">
+        <h3>⚙️ Administrador</h3>
+        <ul>
+          <li>Usuarios y roles</li>
+          <li>Reportes y estadísticas</li>
+          <li>Configuración de la clínica</li>
+          <li>Acceso a todos los módulos</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    CliniSalud — Sistema de gestión clínica · Paraguay · © 2025
+  </footer>
+</body>
+</html>

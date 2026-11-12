@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ingresar — CliniSalud</title>
+  <style>
+    :root {
+      --azul: #0e5aa7;
+      --azul-oscuro: #0a3d73;
+      --celeste: #e8f2fb;
+      --verde: #1a9e6e;
+      --texto: #1f2937;
+      --gris: #6b7280;
+      --error: #dc2626;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--celeste) 0%, #f7fbff 100%);
+      color: var(--texto);
+      padding: 1rem;
+    }
+    .tarjeta {
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(14,90,167,.15);
+      width: 100%; max-width: 400px; padding: 2.5rem;
+    }
+    .logo { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.25rem; color: var(--azul); margin-bottom: 1.5rem; }
+    .logo .cruz {
+      background: var(--azul); color: #fff; width: 34px; height: 34px;
+      border-radius: 8px; display: grid; place-items: center; font-size: 1.1rem;
+    }
+    h1 { font-size: 1.3rem; color: var(--azul-oscuro); margin-bottom: .3rem; }
+    .sub { color: var(--gris); font-size: .92rem; margin-bottom: 1.5rem; }
+    label { display: block; font-size: .88rem; font-weight: 600; margin: 1rem 0 .3rem; }
+    input {
+      width: 100%; padding: .7rem .9rem; border: 1.5px solid #d1d5db;
+      border-radius: 8px; font-size: 1rem; outline: none;
+    }
+    input:focus { border-color: var(--azul); box-shadow: 0 0 0 3px rgba(14,90,167,.15); }
+    button {
+      width: 100%; margin-top: 1.5rem; padding: .8rem;
+      background: var(--azul); color: #fff; border: none; border-radius: 8px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+    }
+    button:hover { background: var(--azul-oscuro); }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .error {
+      display: none; margin-top: 1rem; padding: .7rem .9rem;
+      background: #fee2e2; color: var(--error); border-radius: 8px; font-size: .9rem;
+    }
+    .volver { display: block; text-align: center; margin-top: 1.2rem; color: var(--gris); font-size: .9rem; text-decoration: none; }
+    .volver:hover { color: var(--azul); }
+    .demo {
+      margin-top: 1.5rem; padding: .8rem; background: var(--celeste);
+      border-radius: 8px; font-size: .8rem; color: var(--azul-oscuro);
+    }
+  </style>
+</head>
+<body>
+  <main class="tarjeta">
+    <div class="logo"><span class="cruz">✚</span> CliniSalud</div>
+    <h1>Ingresar al sistema</h1>
+    <p class="sub">Ingresá con tu usuario y contraseña de la clínica.</p>
+
+    <form id="form-login">
+      <label for="email">Usuario (correo electrónico)</label>
+      <input type="email" id="email" placeholder="nombre@clinica.com.py" autocomplete="username" required />
+
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required />
+
+      <button type="submit" id="btn-ingresar">Ingresar</button>
+      <div class="error" id="mensaje-error"></div>
+    </form>
+
+    <div class="demo">
+      Modo demo: si Supabase aún no está configurado, usá cualquier correo y contraseña
+      para ver el sistema con datos de ejemplo.
+    </div>
+
+    <a class="volver" href="index.html">← Volver al inicio</a>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script>
+    const form = document.getElementById('form-login');
+    const btn = document.getElementById('btn-ingresar');
+    const errorBox = document.getElementById('mensaje-error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      btn.disabled = true;
+      errorBox.style.display = 'none';
+
+      if (window.sb) {
+        const { data, error } = await window.sb.auth.signInWithPassword({ email, password });
+        if (error) {
+          errorBox.textContent = 'Usuario o contraseña incorrectos. ' + error.message;
+          errorBox.style.display = 'block';
+          btn.disabled = false;
+          return;
+        }
+        window.location.href = 'dashboard.html';
+      } else {
+        sessionStorage.setItem('demo_usuario', email);
+        window.location.href = 'dashboard.html';
+      }
+    });
+  </script>
+</body>
+</html>
