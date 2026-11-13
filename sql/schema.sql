@@ -154,7 +154,54 @@ create table avisos (
   created_at timestamptz not null default now()
 );
 
+
+-- ── Horarios, feriados, estudios y auditoría ─────────────────────────────
+create table horarios (
+  id uuid primary key default gen_random_uuid(),
+  medico_id uuid not null references medicos (id) on delete cascade,
+  dia_semana int not null check (dia_semana between 1 and 7),
+  desde time not null,
+  hasta time not null,
+  consultorio text,
+  created_at timestamptz not null default now()
+);
+
+create table feriados (
+  id uuid primary key default gen_random_uuid(),
+  fecha date not null unique,
+  descripcion text not null,
+  ley text,
+  created_at timestamptz not null default now()
+);
+
+create type tipo_estudio as enum ('laboratorio', 'cardiologia', 'imagen');
+create type estado_estudio as enum ('pendiente', 'listo');
+
+create table estudios (
+  id uuid primary key default gen_random_uuid(),
+  paciente_id uuid not null references pacientes (id) on delete cascade,
+  tipo tipo_estudio not null default 'laboratorio',
+  nombre text not null,
+  estado estado_estudio not null default 'pendiente',
+  fecha_solicitud date not null default current_date,
+  fecha_resultado date,
+  resultado text,
+  created_at timestamptz not null default now()
+);
+
+create table auditoria (
+  id uuid primary key default gen_random_uuid(),
+  usuario text,
+  accion text not null,
+  detalle text,
+  fecha timestamptz not null default now()
+);
+
 -- ── Seguridad a nivel de fila (RLS) ──────────────────────────────────────────
+alter table horarios enable row level security;
+alter table feriados enable row level security;
+alter table estudios enable row level security;
+alter table auditoria enable row level security;
 alter table profiles enable row level security;
 alter table medicos enable row level security;
 alter table pacientes enable row level security;
@@ -191,6 +238,14 @@ create policy "facturas para usuarios autenticados" on facturas
 create policy "tareas para usuarios autenticados" on tareas
   for all to authenticated using (true) with check (true);
 create policy "avisos para usuarios autenticados" on avisos
+  for all to authenticated using (true) with check (true);
+create policy "horarios para usuarios autenticados" on horarios
+  for all to authenticated using (true) with check (true);
+create policy "feriados para usuarios autenticados" on feriados
+  for all to authenticated using (true) with check (true);
+create policy "estudios para usuarios autenticados" on estudios
+  for all to authenticated using (true) with check (true);
+create policy "auditoria para usuarios autenticados" on auditoria
   for all to authenticated using (true) with check (true);
 
 create policy "servicio actualiza notificaciones" on notificaciones

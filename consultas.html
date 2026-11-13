@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultas — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'consultas';
+
+    const Consultas = {
+      consultas: [], pacientes: [], turnos: [], medicos: [],
+      filtro: '',
+
+      async cargar() {
+        [this.consultas, this.pacientes, this.turnos, this.medicos] = await Promise.all([
+          Store.list('consultas'), Store.list('pacientes'), Store.list('turnos'), Store.list('medicos'),
+        ]);
+      },
+
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+      medico(id) { return this.medicos.find(m => m.id === id); },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const lista = this.filtro
+          ? this.consultas.filter(c => {
+              const p = this.paciente(c.paciente_id);
+              return p && p.nombre_completo.toLowerCase().includes(this.filtro.toLowerCase());
+            })
+          : this.consultas;
+        main.innerHTML = `
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-extrabold">Consultas Médicas</h1>
+              <p class="text-sm text-on-surface-variant">Historia clínica con formato SOAP</p>
+            </div>
+            <div class="flex-1"></div>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+              <input id="buscar-consulta" type="text" value="${esc(this.filtro)}" placeholder="Buscar por paciente…"
+                class="w-64 bg-surface-container-lowest border border-outline-variant rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <button id="btn-nueva-consulta" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow hover:opacity-90">
+              <span class="material-symbols-outlined text-[18px]">add</span>Nueva Consulta
+            </button>
+          </div>
+          <div class="space-y-4">
+            ${lista.length ? lista.map(c => {
+              const p = this.paciente(c.paciente_id);
+              const signos = [c.presion && `PA ${esc(c.presion)}`, c.pulso && `${esc(c.pulso)} lpm`, c.temperatura && `${esc(c.temperatura)} °C`, c.saturacion && `Sat ${esc(c.saturacion)}%`].filter(Boolean).join(' · ');
+              return `
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                  <div class="w-10 h-10 rounded-full bg-primary-fixed text-primary flex items-center justify-center text-xs font-bold">${esc(Shell._iniciales(p ? p.nombre_completo : '?'))}</div>
+                  <div class="flex-1">
+                    <p class="font-bold">${esc(p ? p.nombre_completo : 'Paciente')} <span class="text-xs font-medium text-on-surface-variant">· C.I. ${esc(p ? p.cedula_identidad : '—')}</span></p>
+                    <p class="text-xs text-on-surface-variant">${formatearFecha(c.fecha)} · ${esc(this.medico(c.medico_id)?.nombre || 'Sin médico asignado')}</p>
+                  </div>
+                  <button data-eliminar="${c.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div class="rounded-xl bg-surface-container-low p-3">
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-primary mb-1">S · Subjetivo</p>
+                    <p class="text-xs">${esc(c.motivo_consulta || '—')}</p>
+                  </div>
+                  <div class="rounded-xl bg-surface-container-low p-3">
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-primary mb-1">O · Objetivo</p>
+                    <p class="text-xs">${esc(c.observacion_enfermeria || signos || '—')}</p>
+                    ${signos ? `<p class="text-[11px] text-on-surface-variant mt-1 tabular-nums">${signos}</p>` : ''}
+                  </div>
+                  <div class="rounded-xl bg-surface-container-low p-3">
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-primary mb-1">A · Evaluación</p>
+                    <p class="text-xs">${esc(c.diagnostico || '—')}</p>
+                  </div>
+                  <div class="rounded-xl bg-surface-container-low p-3">
+                    <p class="text-[10px] font-extrabold uppercase tracking-wide text-primary mb-1">P · Plan</p>
+                    <p class="text-xs">${esc(c.tratamiento || '—')}</p>
+                  </div>
+                </div>
+                ${c.observaciones ? `<p class="text-xs text-on-surface-variant mt-3"><span class="font-bold">Observaciones:</span> ${esc(c.observaciones)}</p>` : ''}
+              </div>`;
+            }).join('') : Shell.vacio('No hay consultas registradas.', 'stethoscope')}
+          </div>`;
+        document.getElementById('buscar-consulta').addEventListener('input', ev => {
+          this.filtro = ev.target.value;
+          this.render();
+          const input = document.getElementById('buscar-consulta');
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        });
+        document.getElementById('btn-nueva-consulta').addEventListener('click', () => this.modalNueva());
+        document.querySelectorAll('[data-eliminar]').forEach(b => b.addEventListener('click', async () => {
+          if (!confirm('¿Eliminar esta consulta del prontuario?')) return;
+          await Store.remove('consultas', b.dataset.eliminar);
+          await Shell.registrarAuditoria('eliminar_consulta', 'Consulta eliminada del prontuario');
+          Shell.aviso('Consulta eliminada.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      modalNueva() {
+        const enSala = this.turnos.filter(t => t.fecha === hoyISO() && t.estado === 'sala_espera');
+        Shell.modal({
+          titulo: 'Nueva Consulta Médica (SOAP)',
+          ancho: 'max-w-2xl',
+          contenido: `
+            <form id="form-nueva-consulta" class="space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Paciente *</label>
+                  <select name="paciente_id" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    <option value="">Seleccione…</option>
+                    ${this.pacientes.map(p => `<option value="${p.id}">${esc(p.nombre_completo)} — C.I. ${esc(p.cedula_identidad)}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Médico</label>
+                  <select name="medico_id" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    <option value="">Seleccione…</option>
+                    ${this.medicos.map(m => `<option value="${m.id}">${esc(m.nombre)} — ${esc(m.especialidad)}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              ${enSala.length ? `<div class="rounded-lg bg-amber-container px-3 py-2 text-xs text-amber font-semibold">
+                En sala de espera hoy: ${enSala.map(t => esc(this.paciente(t.paciente_id)?.nombre_completo || '')).join(', ')}</div>` : ''}
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">S · Motivo / Subjetivo</label>
+                <textarea name="motivo_consulta" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Lo que refiere el paciente…"></textarea>
+              </div>
+              <div class="grid grid-cols-3 gap-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Presión</label>
+                  <input name="presion" placeholder="120/80" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Temperatura</label>
+                  <input name="temperatura" placeholder="36.5" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Saturación</label>
+                  <input name="saturacion" placeholder="98" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">A · Diagnóstico</label>
+                <textarea name="diagnostico" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Diagnóstico presuntivo o confirmado…"></textarea>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">P · Plan / Tratamiento</label>
+                <textarea name="tratamiento" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Indicaciones, estudios, controles…"></textarea>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Observaciones</label>
+                <input name="observaciones" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Control en 2 semanas, etc.">
+              </div>
+            </form>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-consulta" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar Consulta</button>`,
+        });
+        document.getElementById('guardar-consulta').addEventListener('click', () => this.guardarNueva());
+      },
+
+      async guardarNueva() {
+        const form = document.getElementById('form-nueva-consulta');
+        const datos = Object.fromEntries(new FormData(form).entries());
+        if (!datos.paciente_id) { Shell.aviso('Seleccione un paciente.', 'error'); return; }
+        const consulta = await Store.insert('consultas', {
+          paciente_id: datos.paciente_id,
+          medico_id: datos.medico_id || '',
+          fecha: new Date().toISOString(),
+          motivo_consulta: datos.motivo_consulta,
+          presion: datos.presion, temperatura: datos.temperatura, saturacion: datos.saturacion,
+          diagnostico: datos.diagnostico,
+          tratamiento: datos.tratamiento,
+          observaciones: datos.observaciones,
+        });
+        const turno = this.turnos.find(t => t.paciente_id === datos.paciente_id && t.estado === 'sala_espera');
+        if (turno) await Store.update('turnos', turno.id, { estado: 'atendido' });
+        await Shell.registrarAuditoria('crear_consulta', `Consulta para ${this.paciente(datos.paciente_id)?.nombre_completo || 'paciente'}: ${datos.diagnostico || 'sin diagnóstico'}`);
+        Shell.cerrarModal();
+        Shell.aviso('Consulta guardada en el prontuario.');
+        await this.cargar();
+        this.render();
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Consultas.cargar();
+      await Consultas.render();
+    }
+  </script>
+</body>
+</html>

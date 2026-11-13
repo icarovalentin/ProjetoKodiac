@@ -33,14 +33,23 @@ Al ingresar, cada usuario ve su propio panel:
 
 ```
 ProjetoKodiac/
-├── index.html          Landing page
+├── index.html          Landing page (diseño Stitch, Sanatorio Serena)
 ├── login.html          Inicio de sesión del equipo
-├── dashboard.html      Panel principal (según rol)
+├── dashboard.html      Redirige según el rol al panel correcto
 ├── portal.html         Portal del paciente
+├── agenda.html         Agenda de turnos (grilla día/semana + panel nueva cita)
+├── pacientes.html      Pacientes: listado, alta con validación de C.I. y ficha/prontuario
+├── preconsulta.html    Cola del día y registro de signos vitales
+├── consultas.html      Historia clínica con formato SOAP
+├── recetas.html        Recetas, certificados y órdenes de estudios (impresión A4 membretada)
+├── facturacion.html    Facturas, cobros y caja del día (guaraníes ₲)
+├── reportes.html       KPIs, gráficos de tendencia y estadísticas por especialidad
+├── administracion.html Usuarios, horarios, feriados, auditoría y configuración
 ├── js/
 │   ├── config.js       Configuración de Supabase (URL y anon key)
-│   ├── store.js        Capa de datos (Supabase o modo demo con localStorage)
-│   └── dashboard.js    Lógica del dashboard y vistas por rol
+│   ├── tokens.js       Tokens de diseño (paleta Sanatorio Serena para Tailwind)
+│   ├── shell.js        Estructura común: barra lateral, cabecera, roles y avisos
+│   └── store.js        Capa de datos (Supabase o modo demo con localStorage)
 └── sql/
     └── schema.sql      Tablas, roles y políticas RLS para Supabase
 ```
@@ -72,7 +81,7 @@ se guardan en `localStorage` del navegador.
 
 ## Próximos pasos
 
-- Adaptar diseño a las pantallas de Google Stitch
+- Versión móvil de las pantallas (carpetas de Stitch para móvil)
 - Envío real de notificaciones (WhatsApp / correo)
 - Firma digital de recetas y certificados
 - Reportes exportables

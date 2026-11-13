@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pre-consulta — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'preconsulta';
+
+    const PreConsulta = {
+      turnos: [], pacientes: [], consultas: [], medicos: [],
+      selTurno: null,
+
+      async cargar() {
+        [this.turnos, this.pacientes, this.consultas, this.medicos] = await Promise.all([
+          Store.list('turnos'), Store.list('pacientes'), Store.list('consultas'), Store.list('medicos'),
+        ]);
+      },
+
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+      medico(id) { return this.medicos.find(m => m.id === id); },
+      colaHoy() {
+        return this.turnos
+          .filter(t => t.fecha === hoyISO() && !['cancelado', 'atendido'].includes(t.estado))
+          .sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+      },
+      consultaDe(turnoId) { return this.consultas.find(c => c.turno_id === turnoId); },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const cola = this.colaHoy();
+        const turnoSel = this.selTurno ? this.turnos.find(t => t.id === this.selTurno) : cola[0];
+        const p = turnoSel ? this.paciente(turnoSel.paciente_id) : null;
+        const consulta = turnoSel ? this.consultaDe(turnoSel.id) : null;
+        main.innerHTML = `
+          <div class="mb-5">
+            <h1 class="text-2xl font-extrabold">Pre-consulta y Signos Vitales</h1>
+            <p class="text-sm text-on-surface-variant capitalize">${fechaLarga(hoyISO())} · ${cola.length} paciente(s) en espera</p>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            <div class="lg:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+              <p class="px-4 py-3 bg-surface-container-low text-xs font-extrabold uppercase tracking-wide text-on-surface-variant">Cola del día</p>
+              ${cola.length ? `<ul>${cola.map(t => {
+                const pac = this.paciente(t.paciente_id);
+                const activo = turnoSel && turnoSel.id === t.id;
+                return `<li>
+                  <button data-sel="${t.id}" class="w-full text-left px-4 py-3 border-t border-outline-variant flex items-center gap-3 ${activo ? 'bg-primary-fixed/50' : 'hover:bg-surface-container-low'}">
+                    <div class="w-9 h-9 rounded-full ${activo ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant'} flex items-center justify-center text-xs font-bold">${esc(Shell._iniciales(pac ? pac.nombre_completo : '?'))}</div>
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-bold truncate">${esc(pac ? pac.nombre_completo : 'Paciente')}</p>
+                      <p class="text-xs text-on-surface-variant tabular-nums">${esc(t.hora)} · ${esc(t.especialidad || '')}</p>
+                    </div>
+                    ${badgeEstado(t.estado)}
+                  </button>
+                </li>`;
+              }).join('')}</ul>` : Shell.vacio('No hay pacientes en espera hoy.', 'event_available')}
+            </div>
+            <div class="lg:col-span-3">
+              ${turnoSel && p ? `
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <div class="flex items-center justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">${esc(Shell._iniciales(p.nombre_completo))}</div>
+                    <div>
+                      <h2 class="font-extrabold">${esc(p.nombre_completo)}</h2>
+                      <p class="text-xs text-on-surface-variant">C.I. ${esc(p.cedula_identidad)} · ${esc(turnoSel.hora)} · ${esc(this.medico(turnoSel.medico_id)?.nombre || '')}</p>
+                    </div>
+                  </div>
+                  ${badgeEstado(turnoSel.estado)}
+                </div>
+                ${p.alergias ? `<div class="rounded-xl bg-error-container text-on-error-container px-3 py-2 mb-4 text-xs font-bold flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">warning</span>Alergias: ${esc(p.alergias)}</div>` : ''}
+                <form id="form-signos" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div><label class="text-xs font-bold text-on-surface-variant">Presión arterial (mmHg)</label>
+                    <input name="presion" value="${esc(consulta?.presion || '')}" placeholder="120/80" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Pulso (lpm)</label>
+                    <input name="pulso" value="${esc(consulta?.pulso || '')}" placeholder="72" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Temperatura (°C)</label>
+                    <input name="temperatura" value="${esc(consulta?.temperatura || '')}" placeholder="36.5" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Saturación O₂ (%)</label>
+                    <input name="saturacion" value="${esc(consulta?.saturacion || '')}" placeholder="98" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Peso (kg)</label>
+                    <input name="peso" value="${esc(consulta?.peso || '')}" placeholder="70" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Altura (cm)</label>
+                    <input name="altura" value="${esc(consulta?.altura || '')}" placeholder="170" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div class="col-span-2 md:col-span-3">
+                    <label class="text-xs font-bold text-on-surface-variant">Observación de enfermería</label>
+                    <textarea name="observacion_enfermeria" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">${esc(consulta?.observacion_enfermeria || '')}</textarea>
+                  </div>
+                </form>
+                <div class="flex flex-wrap gap-2 mt-4">
+                  <button id="guardar-signos" class="flex items-center gap-2 bg-secondary text-on-secondary px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90">
+                    <span class="material-symbols-outlined text-[18px]">save</span>Guardar signos vitales
+                  </button>
+                  ${turnoSel.estado !== 'sala_espera' ? `<button id="a-sala" class="flex items-center gap-2 bg-primary-fixed text-primary px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90">
+                    <span class="material-symbols-outlined text-[18px]">meeting_room</span>Admitir a sala de espera</button>` : ''}
+                  ${turnoSel.estado === 'sala_espera' ? `<a href="consultas.html" class="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container px-4 py-2.5 rounded-lg text-sm font-bold hover:opacity-90">
+                    <span class="material-symbols-outlined text-[18px]">stethoscope</span>Ir a consulta médica</a>` : ''}
+                </div>
+                ${consulta ? `<div class="mt-4 rounded-xl bg-surface-container-low px-4 py-3">
+                  <p class="text-xs font-bold text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">check_circle</span>Signos vitales registrados</p>
+                </div>` : ''}
+              </div>` : Shell.vacio('Seleccione un paciente de la cola para registrar sus signos vitales.', 'monitor_heart')}
+            </div>
+          </div>`;
+        document.querySelectorAll('[data-sel]').forEach(b => b.addEventListener('click', () => { this.selTurno = b.dataset.sel; this.render(); }));
+        const guardar = document.getElementById('guardar-signos');
+        if (guardar) guardar.addEventListener('click', () => this.guardarSignos(turnoSel, consulta));
+        const sala = document.getElementById('a-sala');
+        if (sala) sala.addEventListener('click', async () => {
+          await Store.update('turnos', turnoSel.id, { estado: 'sala_espera' });
+          await Shell.registrarAuditoria('admitir_paciente', `${p.nombre_completo} admitido a sala de espera`);
+          Shell.aviso('Paciente admitido a sala de espera.');
+          await this.cargar();
+          this.render();
+        });
+      },
+
+      async guardarSignos(turno, consulta) {
+        const datos = Object.fromEntries(new FormData(document.getElementById('form-signos')).entries());
+        const signos = {
+          presion: datos.presion, pulso: datos.pulso, temperatura: datos.temperatura,
+          saturacion: datos.saturacion, peso: datos.peso, altura: datos.altura,
+          observacion_enfermeria: datos.observacion_enfermeria,
+        };
+        if (consulta) {
+          await Store.update('consultas', consulta.id, signos);
+        } else {
+          await Store.insert('consultas', {
+            turno_id: turno.id,
+            paciente_id: turno.paciente_id,
+            medico_id: turno.medico_id || '',
+            fecha: new Date().toISOString(),
+            motivo_consulta: turno.motivo || '',
+            ...signos,
+          });
+        }
+        await Shell.registrarAuditoria('registrar_signos', `Signos vitales de ${this.paciente(turno.paciente_id)?.nombre_completo || 'paciente'}`);
+        Shell.aviso('Signos vitales guardados.');
+        await this.cargar();
+        this.render();
+      },
+    };
+
+    async function PaginaIniciar() {
+      await PreConsulta.cargar();
+      await PreConsulta.render();
+    }
+  </script>
+</body>
+</html>

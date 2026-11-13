@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recetas y Certificados — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'recetas';
+
+    const Documentos = {
+      pestana: 'recetas',
+      recetas: [], certificados: [], ordenes: [], pacientes: [], medicos: [], estudios: [],
+
+      async cargar() {
+        [this.recetas, this.certificados, this.pacientes, this.medicos] = await Promise.all([
+          Store.list('recetas'), Store.list('certificados'), Store.list('pacientes'), Store.list('medicos'),
+        ]);
+        const todas = await Store.list('estudios');
+        this.estudios = todas;
+        this.ordenes = todas.filter(e => e.orden_por === 'consulta');
+      },
+
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+      medico(id) { return this.medicos.find(m => m.id === id); },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const pestanas = [
+          { id: 'recetas', nombre: 'Recetas', icono: 'prescriptions', cantidad: this.recetas.length },
+          { id: 'certificados', nombre: 'Certificados', icono: 'description', cantidad: this.certificados.length },
+          { id: 'ordenes', nombre: 'Órdenes de estudios', icono: 'labs', cantidad: this.ordenes.length },
+        ];
+        main.innerHTML = `
+          <div class="mb-5">
+            <h1 class="text-2xl font-extrabold">Recetas y Certificados</h1>
+            <p class="text-sm text-on-surface-variant">Emisión de documentos médicos con membrete oficial</p>
+          </div>
+          <div class="flex gap-2 mb-5">
+            ${pestanas.map(t => `
+              <button data-pestana="${t.id}" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold ${this.pestana === t.id ? 'bg-primary text-on-primary shadow' : 'bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}">
+                <span class="material-symbols-outlined text-[18px]">${t.icono}</span>${t.nombre}
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full ${this.pestana === t.id ? 'bg-white/20' : 'bg-surface-container-high'}">${t.cantidad}</span>
+              </button>`).join('')}
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+              ${this._renderLista()}
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-[18px]">edit_document</span>
+                ${this.pestana === 'recetas' ? 'Emitir receta' : this.pestana === 'certificados' ? 'Emitir certificado' : 'Nueva orden de estudio'}
+              </h3>
+              ${this._renderFormulario()}
+            </div>
+          </div>`;
+        document.querySelectorAll('[data-pestana]').forEach(b => b.addEventListener('click', () => { this.pestana = b.dataset.pestana; this.render(); }));
+        this._conectarFormulario();
+        this._conectarLista();
+      },
+
+      _renderLista() {
+        if (this.pestana === 'recetas') {
+          return this.recetas.length ? `<ul class="divide-y divide-outline-variant/60">${this.recetas.map(r => {
+            const p = this.paciente(r.paciente_id);
+            return `<li class="px-5 py-4 flex items-start gap-3">
+              <span class="material-symbols-outlined text-primary text-[20px] mt-0.5">prescriptions</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold">${esc(p ? p.nombre_completo : 'Paciente')} <span class="text-xs font-medium text-on-surface-variant">· ${formatearFecha(r.fecha)}</span></p>
+                <p class="text-xs text-on-surface-variant mt-0.5 whitespace-pre-line">${esc(r.contenido)}</p>
+              </div>
+              <div class="flex gap-1 shrink-0">
+                <button data-imprimir="recetas:${r.id}" class="p-2 rounded-lg hover:bg-surface-container-low text-primary" title="Imprimir"><span class="material-symbols-outlined text-[18px]">print</span></button>
+                <button data-eliminar="recetas:${r.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+              </div>
+            </li>`;
+          }).join('')}</ul>` : Shell.vacio('No hay recetas emitidas.', 'prescriptions');
+        }
+        if (this.pestana === 'certificados') {
+          return this.certificados.length ? `<ul class="divide-y divide-outline-variant/60">${this.certificados.map(c => {
+            const p = this.paciente(c.paciente_id);
+            return `<li class="px-5 py-4 flex items-start gap-3">
+              <span class="material-symbols-outlined text-tertiary text-[20px] mt-0.5">description</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-bold capitalize">${esc(c.tipo)} — ${esc(p ? p.nombre_completo : 'Paciente')} <span class="text-xs font-medium text-on-surface-variant">· ${formatearFecha(c.fecha)}</span></p>
+                <p class="text-xs text-on-surface-variant mt-0.5">${esc(c.contenido)}${c.dias_reposo ? ` · <span class="font-bold text-amber">${c.dias_reposo} día(s) de reposo</span>` : ''}</p>
+              </div>
+              <div class="flex gap-1 shrink-0">
+                <button data-imprimir="certificados:${c.id}" class="p-2 rounded-lg hover:bg-surface-container-low text-primary" title="Imprimir"><span class="material-symbols-outlined text-[18px]">print</span></button>
+                <button data-eliminar="certificados:${c.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+              </div>
+            </li>`;
+          }).join('')}</ul>` : Shell.vacio('No hay certificados emitidos.', 'description');
+        }
+        return this.ordenes.length ? `<ul class="divide-y divide-outline-variant/60">${this.ordenes.map(e => {
+          const p = this.paciente(e.paciente_id);
+          return `<li class="px-5 py-4 flex items-start gap-3">
+            <span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">labs</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-bold">${esc(e.nombre)} — ${esc(p ? p.nombre_completo : 'Paciente')}</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">Solicitado el ${formatearFecha(e.fecha_solicitud)} · ${esc(e.tipo)}</p>
+            </div>
+            ${badgeEstado(e.estado)}
+          </li>`;
+        }).join('')}</ul>` : Shell.vacio('No hay órdenes de estudios.', 'labs');
+      },
+
+      _renderFormulario() {
+        const selectPaciente = `
+          <select id="doc-paciente" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="">Seleccione paciente…</option>
+            ${this.pacientes.map(p => `<option value="${p.id}">${esc(p.nombre_completo)} — C.I. ${esc(p.cedula_identidad)}</option>`).join('')}
+          </select>`;
+        const selectMedico = `
+          <select id="doc-medico" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+            <option value="">Seleccione médico firmante…</option>
+            ${this.medicos.map(m => `<option value="${m.id}">${esc(m.nombre)} — ${esc(m.especialidad)}</option>`).join('')}
+          </select>`;
+        if (this.pestana === 'recetas') {
+          return `
+            <div class="space-y-3">
+              <div><label class="text-xs font-bold text-on-surface-variant">Paciente *</label>${selectPaciente}</div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Médico firmante *</label>${selectMedico}</div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Prescripción (Rx)</label>
+                <textarea id="doc-contenido" rows="6" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Ibuprofeno 400 mg — 1 comprimido cada 8 horas durante 5 días."></textarea></div>
+              <button id="doc-guardar" class="w-full py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Emitir receta</button>
+            </div>`;
+        }
+        if (this.pestana === 'certificados') {
+          return `
+            <div class="space-y-3">
+              <div><label class="text-xs font-bold text-on-surface-variant">Paciente *</label>${selectPaciente}</div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Médico firmante *</label>${selectMedico}</div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Tipo de certificado</label>
+                <select id="doc-tipo" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="reposo">Certificado de reposo</option>
+                  <option value="asistencia">Certificado de asistencia</option>
+                  <option value="salud">Certificado de buen estado de salud</option>
+                </select></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Días de reposo (si aplica)</label>
+                <input id="doc-dias" type="number" min="0" value="0" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Texto del certificado</label>
+                <textarea id="doc-contenido" rows="4" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Se certifica que el paciente…"></textarea></div>
+              <button id="doc-guardar" class="w-full py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Emitir certificado</button>
+            </div>`;
+        }
+        return `
+          <div class="space-y-3">
+            <div><label class="text-xs font-bold text-on-surface-variant">Paciente *</label>${selectPaciente}</div>
+            <div><label class="text-xs font-bold text-on-surface-variant">Médico solicitante *</label>${selectMedico}</div>
+            <div><label class="text-xs font-bold text-on-surface-variant">Tipo</label>
+              <select id="doc-tipo-estudio" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                <option value="laboratorio">Laboratorio</option>
+                <option value="cardiologia">Cardiología</option>
+                <option value="imagen">Imagen</option>
+              </select></div>
+            <div><label class="text-xs font-bold text-on-surface-variant">Estudio</label>
+              <input id="doc-nombre-estudio" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Ej. Hemograma completo, ECG, Radiografía de tórax…">
+              <div class="flex flex-wrap gap-1.5 mt-2">
+                ${['Hemograma completo', 'Glucemia en ayunas', 'Perfil lipídico', 'Electrocardiograma (ECG)', 'Radiografía de tórax'].map(n => `<button data-sugerir="${n}" class="text-[11px] px-2 py-1 rounded-full bg-surface-container-low border border-outline-variant hover:bg-surface-container">${n}</button>`).join('')}
+              </div></div>
+            <button id="doc-guardar" class="w-full py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Generar orden</button>
+          </div>`;
+      },
+
+      _conectarFormulario() {
+        const guardar = document.getElementById('doc-guardar');
+        if (guardar) guardar.addEventListener('click', () => this.guardar());
+        document.querySelectorAll('[data-sugerir]').forEach(b => b.addEventListener('click', () => {
+          document.getElementById('doc-nombre-estudio').value = b.dataset.sugerir;
+        }));
+      },
+
+      async guardar() {
+        const pacienteId = document.getElementById('doc-paciente').value;
+        const medicoId = document.getElementById('doc-medico').value;
+        if (!pacienteId) { Shell.aviso('Seleccione un paciente.', 'error'); return; }
+        if (!medicoId) { Shell.aviso('Seleccione el médico firmante.', 'error'); return; }
+        const hoy = hoyISO();
+        if (this.pestana === 'recetas') {
+          const contenido = document.getElementById('doc-contenido').value.trim();
+          if (!contenido) { Shell.aviso('Escriba la prescripción.', 'error'); return; }
+          await Store.insert('recetas', { paciente_id: pacienteId, medico_id: medicoId, fecha: hoy, contenido });
+          await Shell.registrarAuditoria('emitir_receta', `Receta para ${this.paciente(pacienteId)?.nombre_completo || 'paciente'}`);
+          Shell.aviso('Receta emitida correctamente.');
+        } else if (this.pestana === 'certificados') {
+          const tipo = document.getElementById('doc-tipo').value;
+          const dias = Number(document.getElementById('doc-dias').value) || 0;
+          const contenido = document.getElementById('doc-contenido').value.trim() ||
+            (tipo === 'reposo' ? `Se otorga reposo médico por ${dias} día(s).` : 'Se certifica lo que corresponde según evaluación médica.');
+          await Store.insert('certificados', { paciente_id: pacienteId, medico_id: medicoId, tipo, fecha: hoy, dias_reposo: dias, contenido });
+          await Shell.registrarAuditoria('emitir_certificado', `Certificado de ${tipo} para ${this.paciente(pacienteId)?.nombre_completo || 'paciente'}`);
+          Shell.aviso('Certificado emitido correctamente.');
+        } else {
+          const nombre = document.getElementById('doc-nombre-estudio').value.trim();
+          if (!nombre) { Shell.aviso('Indique el estudio solicitado.', 'error'); return; }
+          const tipo = document.getElementById('doc-tipo-estudio').value;
+          await Store.insert('estudios', {
+            paciente_id: pacienteId, tipo, nombre, estado: 'pendiente',
+            fecha_solicitud: hoy, fecha_resultado: null, resultado: '', orden_por: 'consulta',
+          });
+          await Shell.registrarAuditoria('emitir_orden_estudio', `Orden de ${nombre} para ${this.paciente(pacienteId)?.nombre_completo || 'paciente'}`);
+          Shell.aviso('Orden de estudio generada.');
+        }
+        await this.cargar();
+        this.render();
+      },
+
+      _conectarLista() {
+        document.querySelectorAll('[data-imprimir]').forEach(b => b.addEventListener('click', () => {
+          const [tabla, id] = b.dataset.imprimir.split(':');
+          this.imprimir(tabla, id);
+        }));
+        document.querySelectorAll('[data-eliminar]').forEach(b => b.addEventListener('click', async () => {
+          const [tabla, id] = b.dataset.eliminar.split(':');
+          if (!confirm('¿Eliminar este documento?')) return;
+          await Store.remove(tabla, id);
+          await Shell.registrarAuditoria('eliminar_documento', `Documento eliminado de ${tabla}`);
+          Shell.aviso('Documento eliminado.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      imprimir(tabla, id) {
+        const registro = (tabla === 'recetas' ? this.recetas : this.certificados).find(r => r.id === id);
+        if (!registro) return;
+        const p = this.paciente(registro.paciente_id);
+        const m = this.medico(registro.medico_id);
+        const esReceta = tabla === 'recetas';
+        const titulo = esReceta ? 'RECETA MÉDICA' : 'CERTIFICADO MÉDICO';
+        const cuerpo = esReceta
+          ? `<p class="text-lg font-bold mb-2">R<span class="text-2xl">x</span></p>
+             <div class="whitespace-pre-line text-base leading-relaxed">${esc(registro.contenido)}</div>`
+          : `<div class="whitespace-pre-line text-base leading-relaxed">${esc(registro.contenido)}</div>
+             ${registro.dias_reposo ? `<p class="mt-4 text-base">Reposo médico: <strong>${registro.dias_reposo} día(s)</strong>, desde el ${formatearFecha(registro.fecha)}.</p>` : ''}`;
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${titulo}</title>
+          <style>
+            @page { size: A4; margin: 2cm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0b1c30; }
+            .membretado { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #005a71; padding-bottom: 14px; }
+            .logo { width: 52px; height: 52px; border-radius: 14px; background: #005a71; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; }
+            .clinica { font-size: 20px; font-weight: 800; color: #005a71; }
+            .sub { font-size: 11px; color: #3f484c; }
+            .titulo { text-align: center; margin: 30px 0 20px; letter-spacing: 3px; font-weight: 800; color: #005a71; }
+            .datos { font-size: 13px; margin-bottom: 24px; }
+            .datos span { font-weight: 700; }
+            .firma { margin-top: 70px; text-align: center; }
+            .linea { border-top: 1px solid #0b1c30; width: 260px; margin: 0 auto 6px; }
+            .pie { margin-top: 40px; border-top: 1px solid #bec8cd; padding-top: 8px; font-size: 10px; color: #6f787d; text-align: center; }
+          </style></head><body>
+          <div class="membretado">
+            <div class="logo">✚</div>
+            <div>
+              <p class="clinica">Sanatorio Serena</p>
+              <p class="sub">Av. Mcal. López 1234, Asunción · Tel. (021) 555 000 · RUC 80012345-6</p>
+            </div>
+          </div>
+          <h1 class="titulo">${titulo}</h1>
+          <div class="datos">
+            <p><span>Paciente:</span> ${esc(p ? p.nombre_completo : '—')} &nbsp;·&nbsp; <span>C.I.:</span> ${esc(p ? p.cedula_identidad : '—')}</p>
+            <p><span>Fecha:</span> ${formatearFecha(registro.fecha)} &nbsp;·&nbsp; <span>Matrícula:</span> ${esc(m ? 'M.P. Nº ' + (m.numero_matricula || '12.345') : '—')}</p>
+          </div>
+          ${cuerpo}
+          <div class="firma">
+            <div class="linea"></div>
+            <p style="font-weight:700">${esc(m ? m.nombre : 'Médico tratante')}</p>
+            <p style="font-size:12px">${esc(m ? m.especialidad : '')} · Sanatorio Serena</p>
+          </div>
+          <div class="pie">Documento emitido electrónicamente por el sistema de gestión clínica Sanatorio Serena · Asunción, Paraguay</div>
+          <script>window.onload = function () { window.print(); };<\/script>
+          </body></html>`;
+        const ventana = window.open('', '_blank', 'width=850,height=1000');
+        if (!ventana) { Shell.aviso('Habilite las ventanas emergentes para imprimir.', 'error'); return; }
+        ventana.document.write(html);
+        ventana.document.close();
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Documentos.cargar();
+      await Documentos.render();
+    }
+  </script>
+</body>
+</html>

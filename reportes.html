@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportes — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'reportes';
+
+    const Reportes = {
+      pacientes: [], turnos: [], consultas: [], facturas: [], medicos: [], estudios: [],
+
+      async cargar() {
+        [this.pacientes, this.turnos, this.consultas, this.facturas, this.medicos, this.estudios] = await Promise.all([
+          Store.list('pacientes'), Store.list('turnos'), Store.list('consultas'),
+          Store.list('facturas'), Store.list('medicos'), Store.list('estudios'),
+        ]);
+      },
+
+      _kpi(titulo, valor, icono, color) {
+        return `<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-on-surface-variant">${titulo}</p>
+            <span class="material-symbols-outlined ${color} text-[22px]">${icono}</span>
+          </div>
+          <p class="text-2xl font-extrabold mt-2 tabular-nums">${valor}</p>
+        </div>`;
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const hoy = hoyISO();
+        const mes = hoy.slice(0, 7);
+        const turnosHoy = this.turnos.filter(t => t.fecha === hoy && t.estado !== 'cancelado').length;
+        const atendidosMes = this.turnos.filter(t => t.estado === 'atendido' && t.fecha.slice(0, 7) === mes).length;
+        const ingresoMes = this.facturas.filter(f => f.estado === 'pagada' && (f.fecha_pago || f.fecha).slice(0, 7) === mes).reduce((s, f) => s + Number(f.monto), 0);
+        const pendienteTotal = this.facturas.filter(f => f.estado === 'pendiente').reduce((s, f) => s + Number(f.monto), 0);
+        const estudiosPendientes = this.estudios.filter(e => e.estado === 'pendiente').length;
+
+        const dias = [...Array(7)].map((_, i) => hoyISO(i - 6));
+        const porDia = dias.map(f => this.turnos.filter(t => t.fecha === f && t.estado !== 'cancelado').length);
+        const maxDia = Math.max(1, ...porDia);
+        const barras = dias.map((f, i) => {
+          const d = new Date(f + 'T12:00:00');
+          const altura = Math.round((porDia[i] / maxDia) * 140);
+          return `<div class="flex-1 flex flex-col items-center gap-1">
+            <p class="text-xs font-bold tabular-nums">${porDia[i]}</p>
+            <div class="w-full max-w-[48px] rounded-t-lg ${f === hoy ? 'bg-primary' : 'bg-primary-fixed'}" style="height:${Math.max(6, altura)}px"></div>
+            <p class="text-[10px] text-on-surface-variant">${d.toLocaleDateString('es-PY', { weekday: 'short' })}</p>
+            <p class="text-[10px] text-on-surface-variant tabular-nums">${f.slice(8)}/${f.slice(5, 7)}</p>
+          </div>`;
+        }).join('');
+
+        const porEspecialidad = this.medicos.map(m => {
+          const total = this.turnos.filter(t => t.medico_id === m.id && t.estado !== 'cancelado').length;
+          return { nombre: m.nombre, especialidad: m.especialidad, total };
+        }).sort((a, b) => b.total - a.total);
+        const maxEsp = Math.max(1, ...porEspecialidad.map(e => e.total));
+        const filasEsp = porEspecialidad.map(e => `
+          <div class="py-2">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <p class="font-bold">${esc(e.nombre)} <span class="font-medium text-on-surface-variant">· ${esc(e.especialidad)}</span></p>
+              <p class="font-bold tabular-nums">${e.total}</p>
+            </div>
+            <div class="h-2 rounded-full bg-surface-container-high overflow-hidden">
+              <div class="h-full rounded-full bg-primary" style="width:${Math.round((e.total / maxEsp) * 100)}%"></div>
+            </div>
+          </div>`).join('');
+
+        const meses = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          meses.push(d.toISOString().slice(0, 7));
+        }
+        const ingresoPorMes = meses.map(m => this.facturas.filter(f => f.estado === 'pagada' && (f.fecha_pago || f.fecha).slice(0, 7) === m).reduce((s, f) => s + Number(f.monto), 0));
+        const maxIngreso = Math.max(1, ...ingresoPorMes);
+        const barrasMes = meses.map((m, i) => {
+          const d = new Date(m + '-15T12:00:00');
+          const altura = Math.round((ingresoPorMes[i] / maxIngreso) * 140);
+          return `<div class="flex-1 flex flex-col items-center gap-1">
+            <p class="text-[10px] font-bold tabular-nums">${formatearMonto(ingresoPorMes[i])}</p>
+            <div class="w-full max-w-[48px] rounded-t-lg ${m === mes ? 'bg-secondary' : 'bg-secondary-container'}" style="height:${Math.max(6, altura)}px"></div>
+            <p class="text-[10px] text-on-surface-variant capitalize">${d.toLocaleDateString('es-PY', { month: 'short' })}</p>
+          </div>`;
+        }).join('');
+
+        const tasaConfirmacion = this.turnos.length
+          ? Math.round((this.turnos.filter(t => ['confirmado', 'sala_espera', 'atendido'].includes(t.estado)).length / this.turnos.length) * 100)
+          : 0;
+
+        main.innerHTML = `
+          <div class="mb-5">
+            <h1 class="text-2xl font-extrabold">Reportes e Indicadores</h1>
+            <p class="text-sm text-on-surface-variant capitalize">${fechaLarga(hoy)}</p>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-5">
+            ${this._kpi('Pacientes registrados', String(this.pacientes.length), 'group', 'text-primary')}
+            ${this._kpi('Turnos de hoy', String(turnosHoy), 'calendar_month', 'text-tertiary')}
+            ${this._kpi('Atenciones del mes', String(atendidosMes), 'stethoscope', 'text-secondary')}
+            ${this._kpi('Ingresos del mes', formatearMonto(ingresoMes), 'payments', 'text-secondary')}
+            ${this._kpi('Pendiente de cobro', formatearMonto(pendienteTotal), 'hourglass_top', 'text-amber')}
+            ${this._kpi('Tasa de confirmación', tasaConfirmacion + '%', 'verified', 'text-primary')}
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-5">
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">monitoring</span>Turnos de los últimos 7 días</h3>
+              <div class="flex items-end gap-2 h-[210px]">${barras}</div>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[18px]">payments</span>Ingresos de los últimos 6 meses</h3>
+              <div class="flex items-end gap-2 h-[210px]">${barrasMes}</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-tertiary text-[18px]">pie_chart</span>Turnos por médico / especialidad</h3>
+              ${filasEsp || Shell.vacio('Sin datos de turnos.', 'pie_chart')}
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-amber text-[18px]">labs</span>Estudios y laboratorio</h3>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="rounded-xl bg-surface-container-low p-4 text-center">
+                  <p class="text-2xl font-extrabold text-secondary tabular-nums">${this.estudios.filter(e => e.estado === 'listo').length}</p>
+                  <p class="text-xs text-on-surface-variant font-semibold">Estudios listos</p>
+                </div>
+                <div class="rounded-xl bg-amber-container p-4 text-center">
+                  <p class="text-2xl font-extrabold text-amber tabular-nums">${estudiosPendientes}</p>
+                  <p class="text-xs text-amber font-semibold">Estudios pendientes</p>
+                </div>
+              </div>
+              <h4 class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mt-4 mb-2">Últimos resultados</h4>
+              ${this.estudios.length ? `<ul class="divide-y divide-outline-variant/60">${this.estudios.slice(0, 5).map(e => `
+                <li class="py-2 flex items-center justify-between text-sm">
+                  <div><p class="font-semibold">${esc(e.nombre)}</p><p class="text-xs text-on-surface-variant">${esc(this.pacientes.find(p => p.id === e.paciente_id)?.nombre_completo || '')} · ${formatearFecha(e.fecha_solicitud)}</p></div>
+                  ${badgeEstado(e.estado)}
+                </li>`).join('')}</ul>` : Shell.vacio('Sin estudios registrados.', 'labs')}
+            </div>
+          </div>`;
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Reportes.cargar();
+      await Reportes.render();
+    }
+  </script>
+</body>
+</html>

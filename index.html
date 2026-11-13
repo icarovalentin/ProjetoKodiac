@@ -947,10 +947,10 @@
       if (window.sb) {
         const { error } = await window.sb.auth.signInWithPassword({ email, password });
         if (error) { alert('Usuario o contraseña incorrectos.'); return; }
-        window.location.href = 'dashboard.html';
+        window.location.href = 'agenda.html';
       } else {
         sessionStorage.setItem('demo_usuario', email);
-        window.location.href = 'dashboard.html';
+        window.location.href = 'agenda.html';
       }
     });
 </script>

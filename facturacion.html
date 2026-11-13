@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facturación — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'facturacion';
+
+    const Facturacion = {
+      facturas: [], pacientes: [],
+      filtro: 'todas',
+
+      async cargar() {
+        [this.facturas, this.pacientes] = await Promise.all([Store.list('facturas'), Store.list('pacientes')]);
+      },
+
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+
+      _kpi(titulo, valor, icono, color) {
+        return `<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-on-surface-variant">${titulo}</p>
+            <span class="material-symbols-outlined ${color} text-[22px]">${icono}</span>
+          </div>
+          <p class="text-xl font-extrabold mt-2 tabular-nums">${valor}</p>
+        </div>`;
+      },
+
+      siguienteNumero() {
+        const numeros = this.facturas.map(f => Number(String(f.numero || '').split('-')[2]) || 0);
+        const max = Math.max(126, ...numeros);
+        return `001-001-${String(max + 1).padStart(7, '0')}`;
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const hoy = hoyISO();
+        const mes = hoy.slice(0, 7);
+        const cobradoHoy = this.facturas.filter(f => f.estado === 'pagada' && (f.fecha_pago || f.fecha) === hoy).reduce((s, f) => s + Number(f.monto), 0);
+        const cobradoMes = this.facturas.filter(f => f.estado === 'pagada' && (f.fecha_pago || f.fecha).slice(0, 7) === mes).reduce((s, f) => s + Number(f.monto), 0);
+        const pendiente = this.facturas.filter(f => f.estado === 'pendiente').reduce((s, f) => s + Number(f.monto), 0);
+        const vencidas = this.facturas.filter(f => f.estado === 'pendiente' && f.vencimiento && f.vencimiento < hoy);
+        const lista = this.filtro === 'todas' ? this.facturas : this.facturas.filter(f => f.estado === this.filtro);
+        main.innerHTML = `
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-extrabold">Facturación y Caja</h1>
+              <p class="text-sm text-on-surface-variant">Gestión financiera en guaraníes (₲)</p>
+            </div>
+            <div class="flex-1"></div>
+            <button id="btn-nueva-factura" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow hover:opacity-90">
+              <span class="material-symbols-outlined text-[18px]">add_card</span>Nueva Nota de Venta
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            ${this._kpi('Cobrado hoy', formatearMonto(cobradoHoy), 'payments', 'text-secondary')}
+            ${this._kpi('Cobrado este mes', formatearMonto(cobradoMes), 'trending_up', 'text-primary')}
+            ${this._kpi('Pendiente de cobro', formatearMonto(pendiente), 'hourglass_top', 'text-amber')}
+            ${this._kpi('Facturas vencidas', String(vencidas.length), 'warning', 'text-alerta')}
+          </div>
+          <div class="flex gap-2 mb-4">
+            ${[['todas', 'Todas'], ['pagada', 'Pagadas'], ['pendiente', 'Pendientes'], ['anulada', 'Anuladas']].map(([v, n]) => `
+              <button data-filtro="${v}" class="px-4 py-2 rounded-lg text-xs font-bold ${this.filtro === v ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}">${n}</button>`).join('')}
+          </div>
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                  <th class="px-4 py-3 font-bold">Nº Factura</th>
+                  <th class="px-4 py-3 font-bold">Paciente</th>
+                  <th class="px-4 py-3 font-bold">Concepto</th>
+                  <th class="px-4 py-3 font-bold">Fecha</th>
+                  <th class="px-4 py-3 font-bold text-right">Monto</th>
+                  <th class="px-4 py-3 font-bold">Estado</th>
+                  <th class="px-4 py-3 font-bold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lista.length ? lista.map(f => {
+                  const p = this.paciente(f.paciente_id);
+                  const vencida = f.estado === 'pendiente' && f.vencimiento && f.vencimiento < hoy;
+                  return `<tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                    <td class="px-4 py-3 font-semibold tabular-nums">${esc(f.numero || '—')}</td>
+                    <td class="px-4 py-3">${esc(p ? p.nombre_completo : '—')}</td>
+                    <td class="px-4 py-3">${esc(f.concepto)}</td>
+                    <td class="px-4 py-3">${formatearFecha(f.fecha)}${vencida ? `<p class="text-[10px] font-bold text-alerta">Vencida ${formatearFecha(f.vencimiento)}</p>` : ''}</td>
+                    <td class="px-4 py-3 text-right font-bold tabular-nums">${formatearMonto(f.monto)}</td>
+                    <td class="px-4 py-3">${badgeEstado(f.estado)}</td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      ${f.estado === 'pendiente' ? `<button data-cobrar="${f.id}" class="px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container text-xs font-bold hover:opacity-80">Cobrar</button>` : ''}
+                      <button data-imprimir="${f.id}" class="p-2 rounded-lg hover:bg-surface-container-low text-primary align-middle" title="Imprimir nota"><span class="material-symbols-outlined text-[18px]">print</span></button>
+                      ${f.estado !== 'anulada' ? `<button data-anular="${f.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error align-middle" title="Anular"><span class="material-symbols-outlined text-[18px]">block</span></button>` : ''}
+                    </td>
+                  </tr>`;
+                }).join('') : `<tr><td colspan="7">${Shell.vacio('No hay facturas en esta vista.', 'receipt_long')}</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-5 bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+            <h3 class="font-extrabold text-sm mb-3 flex items-center gap-2"><span class="material-symbols-outlined text-secondary text-[18px]">point_of_sale</span>Caja del día</h3>
+            ${(() => {
+              const pagosHoy = this.facturas.filter(f => f.estado === 'pagada' && (f.fecha_pago || f.fecha) === hoy);
+              return pagosHoy.length ? `<ul class="divide-y divide-outline-variant/60">${pagosHoy.map(f => `
+                <li class="py-2 flex items-center justify-between text-sm">
+                  <div><p class="font-semibold">${esc(f.concepto)} — ${esc(this.paciente(f.paciente_id)?.nombre_completo || '')}</p>
+                  <p class="text-xs text-on-surface-variant">${esc(f.numero || '')} · ${esc(f.metodo_pago || 'Efectivo')}</p></div>
+                  <p class="font-bold tabular-nums text-secondary">${formatearMonto(f.monto)}</p>
+                </li>`).join('')}
+                <li class="pt-3 flex items-center justify-between font-extrabold">
+                  <span>Total del día</span><span class="tabular-nums text-secondary">${formatearMonto(cobradoHoy)}</span>
+                </li>` : Shell.vacio('Aún no hay cobros registrados hoy.', 'point_of_sale');
+            })()}
+          </div>`;
+        document.querySelectorAll('[data-filtro]').forEach(b => b.addEventListener('click', () => { this.filtro = b.dataset.filtro; this.render(); }));
+        document.getElementById('btn-nueva-factura').addEventListener('click', () => this.modalNueva());
+        document.querySelectorAll('[data-cobrar]').forEach(b => b.addEventListener('click', () => this.modalCobrar(b.dataset.cobrar)));
+        document.querySelectorAll('[data-anular]').forEach(b => b.addEventListener('click', async () => {
+          const f = this.facturas.find(x => x.id === b.dataset.anular);
+          if (!f || !confirm(`¿Anular la factura ${f.numero}?`)) return;
+          await Store.update('facturas', f.id, { estado: 'anulada' });
+          await Shell.registrarAuditoria('anular_factura', `Factura ${f.numero} anulada`);
+          Shell.aviso('Factura anulada.');
+          await this.cargar();
+          this.render();
+        }));
+        document.querySelectorAll('[data-imprimir]').forEach(b => b.addEventListener('click', () => this.imprimirNota(b.dataset.imprimir)));
+      },
+
+      modalNueva() {
+        Shell.modal({
+          titulo: 'Nueva Nota de Venta',
+          contenido: `
+            <form id="form-nueva-factura" class="space-y-3">
+              <div class="rounded-lg bg-surface-container-low px-3 py-2 text-xs text-on-surface-variant">
+                Número asignado: <span class="font-bold text-primary tabular-nums">${this.siguienteNumero()}</span>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Paciente *</label>
+                <select name="paciente_id" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">Seleccione…</option>
+                  ${this.pacientes.map(p => `<option value="${p.id}">${esc(p.nombre_completo)} — C.I. ${esc(p.cedula_identidad)}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Concepto *</label>
+                <input name="concepto" required placeholder="Consulta médica, estudios, medicación…" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Monto (₲) *</label>
+                  <input name="monto" type="number" min="0" required placeholder="150000" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white tabular-nums">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Método de pago</label>
+                  <select name="metodo_pago" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    <option>Efectivo</option><option>Transferencia</option><option>Tarjeta de débito</option><option>Tarjeta de crédito</option><option>QR</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Estado</label>
+                <select name="estado" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="pagada">Pagada</option>
+                  <option value="pendiente">Pendiente de pago</option>
+                </select>
+              </div>
+            </form>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-factura" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Emitir Nota de Venta</button>`,
+        });
+        document.getElementById('guardar-factura').addEventListener('click', async () => {
+          const datos = Object.fromEntries(new FormData(document.getElementById('form-nueva-factura')).entries());
+          if (!datos.paciente_id) { Shell.aviso('Seleccione un paciente.', 'error'); return; }
+          if (!Number(datos.monto)) { Shell.aviso('Ingrese un monto válido.', 'error'); return; }
+          const hoy = hoyISO();
+          await Store.insert('facturas', {
+            paciente_id: datos.paciente_id,
+            numero: this.siguienteNumero(),
+            concepto: datos.concepto.trim(),
+            monto: Number(datos.monto),
+            fecha: hoy,
+            fecha_pago: datos.estado === 'pagada' ? hoy : null,
+            vencimiento: datos.estado === 'pendiente' ? hoyISO(15) : null,
+            estado: datos.estado,
+            metodo_pago: datos.estado === 'pagada' ? datos.metodo_pago : null,
+            moneda: 'PYG',
+          });
+          await Shell.registrarAuditoria('emitir_factura', `Nota de venta ${this.siguienteNumero()} por ${formatearMonto(datos.monto)}`);
+          Shell.cerrarModal();
+          Shell.aviso('Nota de venta emitida.');
+          await this.cargar();
+          this.render();
+        });
+      },
+
+      modalCobrar(id) {
+        const f = this.facturas.find(x => x.id === id);
+        if (!f) return;
+        Shell.modal({
+          titulo: `Cobrar factura ${f.numero}`,
+          contenido: `
+            <div class="space-y-3 text-sm">
+              <div class="rounded-xl bg-surface-container-low px-4 py-3">
+                <p class="font-bold">${esc(f.concepto)}</p>
+                <p class="text-xs text-on-surface-variant">${esc(this.paciente(f.paciente_id)?.nombre_completo || '')}</p>
+                <p class="text-lg font-extrabold text-primary tabular-nums mt-1">${formatearMonto(f.monto)}</p>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Método de pago</label>
+                <select id="metodo-pago" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option>Efectivo</option><option>Transferencia</option><option>Tarjeta de débito</option><option>Tarjeta de crédito</option><option>QR</option>
+                </select>
+              </div>
+            </div>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="confirmar-cobro" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Confirmar cobro</button>`,
+        });
+        document.getElementById('confirmar-cobro').addEventListener('click', async () => {
+          await Store.update('facturas', f.id, { estado: 'pagada', metodo_pago: document.getElementById('metodo-pago').value, fecha_pago: hoyISO() });
+          await Shell.registrarAuditoria('registrar_pago', `Factura ${f.numero} cobrada`);
+          Shell.cerrarModal();
+          Shell.aviso('Cobro registrado correctamente.');
+          await this.cargar();
+          this.render();
+        });
+      },
+
+      imprimirNota(id) {
+        const f = this.facturas.find(x => x.id === id);
+        if (!f) return;
+        const p = this.paciente(f.paciente_id);
+        const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Nota de venta ${esc(f.numero || '')}</title>
+          <style>
+            @page { size: A4; margin: 2cm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; color: #0b1c30; }
+            .cabecera { display: flex; justify-content: space-between; border-bottom: 3px solid #005a71; padding-bottom: 12px; }
+            .clinica { font-size: 20px; font-weight: 800; color: #005a71; }
+            .sub { font-size: 11px; color: #3f484c; }
+            .titulo { text-align: center; margin: 24px 0; letter-spacing: 2px; font-weight: 800; color: #005a71; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th { background: #eff4ff; text-align: left; font-size: 12px; padding: 8px; }
+            td { font-size: 13px; padding: 10px 8px; border-bottom: 1px solid #bec8cd; }
+            .total { text-align: right; font-size: 16px; font-weight: 800; margin-top: 16px; color: #005a71; }
+            .pie { margin-top: 40px; border-top: 1px solid #bec8cd; padding-top: 8px; font-size: 10px; color: #6f787d; text-align: center; }
+          </style></head><body>
+          <div class="cabecera">
+            <div>
+              <p class="clinica">Sanatorio Serena</p>
+              <p class="sub">Av. Mcal. López 1234, Asunción · Tel. (021) 555 000 · RUC 80012345-6</p>
+            </div>
+            <div style="text-align:right">
+              <p style="font-weight:800">NOTA DE VENTA</p>
+              <p class="sub tabular-nums">${esc(f.numero || '')}</p>
+              <p class="sub">${formatearFecha(f.fecha)}</p>
+            </div>
+          </div>
+          <h1 class="titulo">COMPROBANTE DE PAGO</h1>
+          <table>
+            <tr><th>Paciente</th><td>${esc(p ? p.nombre_completo : '—')} (C.I. ${esc(p ? p.cedula_identidad : '—')})</td></tr>
+            <tr><th>Concepto</th><td>${esc(f.concepto)}</td></tr>
+            <tr><th>Estado</th><td style="text-transform:capitalize">${esc(f.estado)}</td></tr>
+            <tr><th>Método de pago</th><td>${esc(f.metodo_pago || '—')}</td></tr>
+          </table>
+          <p class="total">Total: ${formatearMonto(f.monto)}</p>
+          <div class="pie">Comprobante emitido electrónicamente por el sistema de gestión clínica Sanatorio Serena · Asunción, Paraguay</div>
+          <script>window.onload = function () { window.print(); };<\/script>
+          </body></html>`;
+        const ventana = window.open('', '_blank', 'width=850,height=1000');
+        if (!ventana) { Shell.aviso('Habilite las ventanas emergentes para imprimir.', 'error'); return; }
+        ventana.document.write(html);
+        ventana.document.close();
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Facturacion.cargar();
+      await Facturacion.render();
+    }
+  </script>
+</body>
+</html>

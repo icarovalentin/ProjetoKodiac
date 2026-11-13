@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pacientes — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'pacientes';
+
+    const Pacientes = {
+      pacientes: [], turnos: [], consultas: [], recetas: [], certificados: [], estudios: [], facturas: [],
+      busqueda: '',
+      fichaId: null,
+
+      async cargar() {
+        [this.pacientes, this.turnos, this.consultas, this.recetas, this.certificados, this.estudios, this.facturas] = await Promise.all([
+          Store.list('pacientes'), Store.list('turnos'), Store.list('consultas'), Store.list('recetas'),
+          Store.list('certificados'), Store.list('estudios'), Store.list('facturas'),
+        ]);
+      },
+
+      filtrados() {
+        const q = this.busqueda.toLowerCase().replace(/[.\-\s]/g, '');
+        if (!q) return this.pacientes;
+        return this.pacientes.filter(p =>
+          p.nombre_completo.toLowerCase().includes(this.busqueda.toLowerCase()) ||
+          String(p.cedula_identidad || '').replace(/[.\-\s]/g, '').includes(q));
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        if (this.fichaId) { this.renderFicha(); return; }
+        const lista = this.filtrados();
+        main.innerHTML = `
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-extrabold">Pacientes</h1>
+              <p class="text-sm text-on-surface-variant">${this.pacientes.length} pacientes registrados</p>
+            </div>
+            <div class="flex-1"></div>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+              <input id="buscar-paciente" type="text" value="${esc(this.busqueda)}" placeholder="Buscar por nombre o C.I.…"
+                class="w-72 bg-surface-container-lowest border border-outline-variant rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40">
+            </div>
+            <button id="btn-nuevo-paciente" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow hover:opacity-90">
+              <span class="material-symbols-outlined text-[18px]">person_add</span>Nuevo Paciente
+            </button>
+          </div>
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                  <th class="px-4 py-3 font-bold">Paciente</th>
+                  <th class="px-4 py-3 font-bold">C.I.</th>
+                  <th class="px-4 py-3 font-bold">Teléfono</th>
+                  <th class="px-4 py-3 font-bold">Nacimiento</th>
+                  <th class="px-4 py-3 font-bold">Sangre</th>
+                  <th class="px-4 py-3 font-bold">Alergias</th>
+                  <th class="px-4 py-3 font-bold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${lista.length ? lista.map(p => `
+                  <tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-primary-fixed text-primary flex items-center justify-center text-xs font-bold">${esc(Shell._iniciales(p.nombre_completo))}</div>
+                        <div>
+                          <p class="font-bold">${esc(p.nombre_completo)}</p>
+                          <p class="text-xs text-on-surface-variant">${esc(p.email || 'sin email')}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 tabular-nums">${esc(p.cedula_identidad)}</td>
+                    <td class="px-4 py-3 tabular-nums">${esc(p.telefono || '—')}</td>
+                    <td class="px-4 py-3">${formatearFecha(p.fecha_nacimiento)}</td>
+                    <td class="px-4 py-3">${esc(p.sangre_tipo || '—')}</td>
+                    <td class="px-4 py-3">${p.alergias ? `<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-xs font-semibold">${esc(p.alergias)}</span>` : '<span class="text-on-surface-variant">Ninguna</span>'}</td>
+                    <td class="px-4 py-3 text-right">
+                      <button data-ficha="${p.id}" class="px-3 py-1.5 rounded-lg bg-primary-fixed text-primary text-xs font-bold hover:opacity-80">Ver ficha</button>
+                      <button data-eliminar="${p.id}" class="ml-1 p-1.5 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error align-middle" title="Eliminar">
+                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </td>
+                  </tr>`).join('') : `<tr><td colspan="7">${Shell.vacio('No se encontraron pacientes.', 'person_search')}</td></tr>`}
+              </tbody>
+            </table>
+          </div>`;
+        document.getElementById('buscar-paciente').addEventListener('input', ev => {
+          this.busqueda = ev.target.value;
+          this.render();
+          const input = document.getElementById('buscar-paciente');
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        });
+        document.getElementById('btn-nuevo-paciente').addEventListener('click', () => this.modalNuevo());
+        document.querySelectorAll('[data-ficha]').forEach(b => b.addEventListener('click', () => { this.fichaId = b.dataset.ficha; this.render(); }));
+        document.querySelectorAll('[data-eliminar]').forEach(b => b.addEventListener('click', () => this.eliminar(b.dataset.eliminar)));
+      },
+
+      async eliminar(id) {
+        const p = this.pacientes.find(x => x.id === id);
+        if (!p || !confirm(`¿Eliminar a ${p.nombre_completo}? Esta acción no se puede deshacer.`)) return;
+        await Store.remove('pacientes', id);
+        await Shell.registrarAuditoria('eliminar_paciente', `Paciente eliminado: ${p.nombre_completo}`);
+        Shell.aviso('Paciente eliminado.');
+        await this.cargar();
+        this.render();
+      },
+
+      modalNuevo() {
+        Shell.modal({
+          titulo: 'Nuevo Paciente',
+          contenido: `
+            <form id="form-nuevo-paciente" class="space-y-3">
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Cédula de identidad *</label>
+                <input name="cedula" required placeholder="Ej. 4.123.456" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                <p id="error-ci" class="text-xs text-error hidden mt-1">Cédula inválida o ya registrada. Use solo números (5–8 dígitos).</p>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Nombre completo *</label>
+                <input name="nombre" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Fecha de nacimiento</label>
+                  <input name="nacimiento" type="date" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Tipo de sangre</label>
+                  <select name="sangre" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    ${['', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map(s => `<option value="${s}">${s || 'Desconocido'}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Teléfono</label>
+                  <input name="telefono" placeholder="0981 123 456" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                </div>
+                <div>
+                  <label class="text-xs font-bold text-on-surface-variant">Email</label>
+                  <input name="email" type="email" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                </div>
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Dirección</label>
+                <input name="direccion" placeholder="Ciudad / Barrio" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              </div>
+              <div>
+                <label class="text-xs font-bold text-on-surface-variant">Alergias</label>
+                <input name="alergias" placeholder="Ej. Penicilina (dejar vacío si no tiene)" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              </div>
+            </form>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-paciente" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar Paciente</button>`,
+        });
+        document.getElementById('guardar-paciente').addEventListener('click', () => this.guardarNuevo());
+      },
+
+      async guardarNuevo() {
+        const form = document.getElementById('form-nuevo-paciente');
+        const datos = Object.fromEntries(new FormData(form).entries());
+        const errorCi = document.getElementById('error-ci');
+        const ciLimpia = String(datos.cedula || '').replace(/[.\-\s]/g, '');
+        const valida = /^\d{5,8}$/.test(ciLimpia);
+        const duplicada = this.pacientes.some(p => String(p.cedula_identidad || '').replace(/[.\-\s]/g, '') === ciLimpia);
+        if (!valida || duplicada) { errorCi.classList.remove('hidden'); return; }
+        errorCi.classList.add('hidden');
+        await Store.insert('pacientes', {
+          nombre_completo: datos.nombre.trim(),
+          cedula_identidad: datos.cedula.trim(),
+          fecha_nacimiento: datos.nacimiento || '',
+          telefono: datos.telefono || '',
+          email: datos.email || '',
+          direccion: datos.direccion || '',
+          sangre_tipo: datos.sangre || '',
+          alergias: datos.alergias || '',
+        });
+        await Shell.registrarAuditoria('crear_paciente', `Nuevo paciente: ${datos.nombre} (C.I. ${datos.cedula})`);
+        Shell.cerrarModal();
+        Shell.aviso('Paciente registrado correctamente.');
+        await this.cargar();
+        this.render();
+      },
+
+      renderFicha() {
+        const main = document.getElementById('shell-main');
+        const p = this.pacientes.find(x => x.id === this.fichaId);
+        if (!p) { this.fichaId = null; this.render(); return; }
+        const turnos = this.turnos.filter(t => t.paciente_id === p.id);
+        const consultas = this.consultas.filter(c => c.paciente_id === p.id);
+        const recetas = this.recetas.filter(r => r.paciente_id === p.id);
+        const certificados = this.certificados.filter(c => c.paciente_id === p.id);
+        const estudios = this.estudios.filter(e => e.paciente_id === p.id);
+        const facturas = this.facturas.filter(f => f.paciente_id === p.id);
+        const fila = (etiqueta, valor) => `<div class="py-2 border-b border-outline-variant/60 last:border-0">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">${etiqueta}</p>
+          <p class="text-sm font-semibold">${valor}</p></div>`;
+        const listaSimple = (items, vacio, icono, formato) => items.length
+          ? `<ul class="divide-y divide-outline-variant/60">${items.map(formato).join('')}</ul>`
+          : Shell.vacio(vacio, icono);
+        main.innerHTML = `
+          <button id="volver" class="flex items-center gap-1 text-sm font-bold text-primary mb-4 hover:underline">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>Volver al listado
+          </button>
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div class="space-y-5">
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <div class="flex items-center gap-4 mb-4">
+                  <div class="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center text-lg font-extrabold">${esc(Shell._iniciales(p.nombre_completo))}</div>
+                  <div>
+                    <h2 class="text-lg font-extrabold">${esc(p.nombre_completo)}</h2>
+                    <p class="text-xs text-on-surface-variant">C.I. ${esc(p.cedula_identidad)}</p>
+                  </div>
+                </div>
+                ${p.alergias ? `<div class="rounded-xl bg-error-container text-on-error-container px-3 py-2 mb-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-[18px]">warning</span>
+                  <p class="text-xs font-bold">Alergias: ${esc(p.alergias)}</p>
+                </div>` : ''}
+                ${fila('Fecha de nacimiento', formatearFecha(p.fecha_nacimiento))}
+                ${fila('Teléfono', esc(p.telefono || '—'))}
+                ${fila('Email', esc(p.email || '—'))}
+                ${fila('Dirección', esc(p.direccion || '—'))}
+                ${fila('Tipo de sangre', esc(p.sangre_tipo || 'Desconocido'))}
+                <div class="flex gap-2 mt-4">
+                  <button id="editar-paciente" class="flex-1 py-2 rounded-lg border border-outline-variant text-xs font-bold hover:bg-surface-container-low">Editar datos</button>
+                  <a href="agenda.html" class="flex-1 py-2 rounded-lg bg-primary text-on-primary text-xs font-bold text-center hover:opacity-90">Agendar turno</a>
+                </div>
+              </div>
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <h3 class="font-extrabold text-sm mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">receipt_long</span>Facturas (${facturas.length})</h3>
+                ${listaSimple(facturas, 'Sin facturas registradas.', 'receipt_long', f => `
+                  <li class="py-2 flex items-center justify-between text-sm">
+                    <div><p class="font-semibold">${esc(f.concepto)}</p><p class="text-xs text-on-surface-variant">${formatearFecha(f.fecha)} · ${esc(f.numero || '')}</p></div>
+                    <div class="text-right"><p class="font-bold tabular-nums">${formatearMonto(f.monto)}</p>${badgeEstado(f.estado)}</div>
+                  </li>`)}
+              </div>
+            </div>
+            <div class="xl:col-span-2 space-y-5">
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <h3 class="font-extrabold text-sm mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">calendar_month</span>Turnos (${turnos.length})</h3>
+                ${listaSimple(turnos, 'Sin turnos registrados.', 'calendar_month', t => `
+                  <li class="py-2 flex items-center justify-between text-sm">
+                    <div><p class="font-semibold">${formatearFecha(t.fecha)} · ${esc(t.hora)} — ${esc(t.motivo || '')}</p><p class="text-xs text-on-surface-variant">${esc(t.especialidad || '')} · ${esc(t.consultorio || '')}</p></div>
+                    ${badgeEstado(t.estado)}
+                  </li>`)}
+              </div>
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <h3 class="font-extrabold text-sm mb-2 flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">stethoscope</span>Historia clínica / Prontuario (${consultas.length})</h3>
+                ${listaSimple(consultas, 'Sin consultas registradas.', 'stethoscope', c => `
+                  <li class="py-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <p class="font-bold text-sm">${formatearFecha(c.fecha)}</p>
+                      <a href="consultas.html" class="text-xs font-bold text-primary hover:underline">Ver en consultas</a>
+                    </div>
+                    <p class="text-xs"><span class="font-bold">Motivo:</span> ${esc(c.motivo_consulta || '—')}</p>
+                    <p class="text-xs"><span class="font-bold">Diagnóstico:</span> ${esc(c.diagnostico || '—')}</p>
+                    <p class="text-xs"><span class="font-bold">Tratamiento:</span> ${esc(c.tratamiento || '—')}</p>
+                    ${c.observaciones ? `<p class="text-xs text-on-surface-variant mt-1">${esc(c.observaciones)}</p>` : ''}
+                  </li>`)}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                  <h3 class="font-extrabold text-sm mb-2">Recetas (${recetas.length})</h3>
+                  ${listaSimple(recetas, 'Sin recetas.', 'prescriptions', r => `<li class="py-2 text-xs"><p class="font-bold">${formatearFecha(r.fecha)}</p><p class="text-on-surface-variant">${esc((r.contenido || '').slice(0, 80))}…</p></li>`)}
+                </div>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                  <h3 class="font-extrabold text-sm mb-2">Certificados (${certificados.length})</h3>
+                  ${listaSimple(certificados, 'Sin certificados.', 'description', c => `<li class="py-2 text-xs"><p class="font-bold capitalize">${esc(c.tipo)} · ${formatearFecha(c.fecha)}</p><p class="text-on-surface-variant">${esc(c.contenido || '')}</p></li>`)}
+                </div>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                  <h3 class="font-extrabold text-sm mb-2">Estudios (${estudios.length})</h3>
+                  ${listaSimple(estudios, 'Sin estudios.', 'labs', e => `<li class="py-2 text-xs"><p class="font-bold">${esc(e.nombre)}</p><p class="text-on-surface-variant">${esc(e.tipo)} · ${formatearFecha(e.fecha_solicitud)}</p>${badgeEstado(e.estado)}</li>`)}
+                </div>
+              </div>
+            </div>
+          </div>`;
+        document.getElementById('volver').addEventListener('click', () => { this.fichaId = null; this.render(); });
+        document.getElementById('editar-paciente').addEventListener('click', () => this.modalEditar(p));
+      },
+
+      modalEditar(p) {
+        Shell.modal({
+          titulo: 'Editar Paciente',
+          contenido: `
+            <form id="form-editar-paciente" class="space-y-3">
+              <div><label class="text-xs font-bold text-on-surface-variant">Nombre completo</label>
+                <input name="nombre" value="${esc(p.nombre_completo)}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Teléfono</label>
+                  <input name="telefono" value="${esc(p.telefono || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Email</label>
+                  <input name="email" value="${esc(p.email || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              </div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Dirección</label>
+                <input name="direccion" value="${esc(p.direccion || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Tipo de sangre</label>
+                  <input name="sangre" value="${esc(p.sangre_tipo || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Alergias</label>
+                  <input name="alergias" value="${esc(p.alergias || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              </div>
+            </form>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-edicion" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar cambios</button>`,
+        });
+        document.getElementById('guardar-edicion').addEventListener('click', async () => {
+          const datos = Object.fromEntries(new FormData(document.getElementById('form-editar-paciente')).entries());
+          await Store.update('pacientes', p.id, {
+            nombre_completo: datos.nombre.trim(),
+            telefono: datos.telefono, email: datos.email, direccion: datos.direccion,
+            sangre_tipo: datos.sangre, alergias: datos.alergias,
+          });
+          await Shell.registrarAuditoria('editar_paciente', `Datos actualizados: ${datos.nombre}`);
+          Shell.cerrarModal();
+          Shell.aviso('Paciente actualizado.');
+          await this.cargar();
+          this.renderFicha();
+        });
+      },
+    };
+
+    async function PaginaIniciar() {
+      const params = new URLSearchParams(window.location.search);
+      await Pacientes.cargar();
+      if (params.get('paciente')) Pacientes.fichaId = params.get('paciente');
+      await Pacientes.render();
+    }
+  </script>
+</body>
+</html>

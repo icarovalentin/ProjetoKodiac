@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administración — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'administracion';
+
+    const DIAS = { 1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo' };
+
+    const Administracion = {
+      pestana: 'resumen',
+      usuarios: [], medicos: [], horarios: [], feriados: [], auditoria: [],
+
+      async cargar() {
+        [this.usuarios, this.medicos, this.horarios, this.feriados, this.auditoria] = await Promise.all([
+          Store.list('usuarios'), Store.list('medicos'), Store.list('horarios'),
+          Store.list('feriados'), Store.list('auditoria'),
+        ]);
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const pestanas = [
+          ['resumen', 'Resumen', 'dashboard'],
+          ['usuarios', 'Usuarios y Personal', 'badge'],
+          ['horarios', 'Horarios', 'schedule'],
+          ['feriados', 'Feriados', 'event'],
+          ['auditoria', 'Auditoría', 'history'],
+          ['configuracion', 'Configuración', 'settings'],
+        ];
+        main.innerHTML = `
+          <div class="mb-5">
+            <h1 class="text-2xl font-extrabold">Administración</h1>
+            <p class="text-sm text-on-surface-variant">Configuración del establecimiento, personal y calendario</p>
+          </div>
+          <div class="flex flex-wrap gap-2 mb-5">
+            ${pestanas.map(([id, nombre, icono]) => `
+              <button data-pestana="${id}" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold ${this.pestana === id ? 'bg-primary text-on-primary shadow' : 'bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}">
+                <span class="material-symbols-outlined text-[18px]">${icono}</span>${nombre}
+              </button>`).join('')}
+          </div>
+          ${this['_render_' + this.pestana]()}`;
+        document.querySelectorAll('[data-pestana]').forEach(b => b.addEventListener('click', () => { this.pestana = b.dataset.pestana; this.render(); }));
+        this['_conectar_' + this.pestana]?.();
+      },
+
+      _render_resumen() {
+        const tarjeta = (titulo, valor, icono) => `<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary-fixed text-primary flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">${icono}</span></div>
+            <div><p class="text-xs font-bold text-on-surface-variant">${titulo}</p><p class="text-xl font-extrabold tabular-nums">${valor}</p></div>
+          </div></div>`;
+        return `
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+            ${tarjeta('Usuarios del sistema', String(this.usuarios.length), 'badge')}
+            ${tarjeta('Médicos activos', String(this.medicos.filter(m => m.estado === 'activo').length), 'stethoscope')}
+            ${tarjeta('Feriados registrados', String(this.feriados.length), 'event')}
+            ${tarjeta('Registros de auditoría', String(this.auditoria.length), 'history')}
+          </div>
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+            <h3 class="font-extrabold text-sm mb-3">Estado de la conexión</h3>
+            <div class="rounded-xl px-4 py-3 flex items-center gap-3 ${window.sb ? 'bg-secondary-container text-on-secondary-container' : 'bg-amber-container text-amber'}">
+              <span class="material-symbols-outlined">${window.sb ? 'cloud_done' : 'cloud_off'}</span>
+              <div>
+                <p class="text-sm font-bold">${window.sb ? 'Conectado a Supabase' : 'Modo demostración (datos locales)'}</p>
+                <p class="text-xs">${window.sb ? 'Los datos se guardan en la nube.' : 'Configure SUPABASE_URL y SUPABASE_ANON_KEY en js/config.js para activar la nube.'}</p>
+              </div>
+            </div>
+          </div>`;
+      },
+
+      _render_usuarios() {
+        return `
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden mb-5">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                  <th class="px-4 py-3 font-bold">Nombre</th>
+                  <th class="px-4 py-3 font-bold">Rol</th>
+                  <th class="px-4 py-3 font-bold">Email</th>
+                  <th class="px-4 py-3 font-bold">Estado</th>
+                  <th class="px-4 py-3 font-bold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${this.usuarios.map(u => `
+                  <tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                    <td class="px-4 py-3 font-bold">${esc(u.nombre)}</td>
+                    <td class="px-4 py-3">${esc(u.rol)}</td>
+                    <td class="px-4 py-3">${esc(u.email || '—')}</td>
+                    <td class="px-4 py-3">${badgeEstado(String(u.estado || 'activo').toLowerCase())}</td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <button data-editar-usuario="${u.id}" class="px-3 py-1.5 rounded-lg bg-primary-fixed text-primary text-xs font-bold hover:opacity-80">Editar</button>
+                      <button data-eliminar-usuario="${u.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error align-middle" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+            <h3 class="font-extrabold text-sm mb-3">Nuevo usuario del personal</h3>
+            <form id="form-usuario" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div><label class="text-xs font-bold text-on-surface-variant">Nombre completo</label>
+                <input name="nombre" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Rol</label>
+                <select name="rol" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option>Médico</option><option>Recepcionista</option><option>Enfermería</option><option>Administrador</option>
+                </select></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Email</label>
+                <input name="email" type="email" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <button class="py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Agregar usuario</button>
+            </form>
+          </div>`;
+      },
+
+      _conectar_usuarios() {
+        document.getElementById('form-usuario').addEventListener('submit', async ev => {
+          ev.preventDefault();
+          const datos = Object.fromEntries(new FormData(ev.target).entries());
+          await Store.insert('usuarios', { nombre: datos.nombre.trim(), rol: datos.rol, email: datos.email, estado: 'Activo' });
+          await Shell.registrarAuditoria('crear_usuario', `Usuario ${datos.nombre} (${datos.rol})`);
+          Shell.aviso('Usuario agregado.');
+          await this.cargar();
+          this.render();
+        });
+        document.querySelectorAll('[data-eliminar-usuario]').forEach(b => b.addEventListener('click', async () => {
+          const u = this.usuarios.find(x => x.id === b.dataset.eliminarUsuario);
+          if (!u || !confirm(`¿Eliminar el usuario ${u.nombre}?`)) return;
+          await Store.remove('usuarios', u.id);
+          await Shell.registrarAuditoria('eliminar_usuario', `Usuario ${u.nombre} eliminado`);
+          Shell.aviso('Usuario eliminado.');
+          await this.cargar();
+          this.render();
+        }));
+        document.querySelectorAll('[data-editar-usuario]').forEach(b => b.addEventListener('click', () => {
+          const u = this.usuarios.find(x => x.id === b.dataset.editarUsuario);
+          if (!u) return;
+          Shell.modal({
+            titulo: 'Editar usuario',
+            contenido: `
+              <form id="form-editar-usuario" class="space-y-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Nombre</label>
+                  <input name="nombre" value="${esc(u.nombre)}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Rol</label>
+                  <select name="rol" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    ${['Médico', 'Recepcionista', 'Enfermería', 'Administrador'].map(r => `<option ${u.rol === r ? 'selected' : ''}>${r}</option>`).join('')}
+                  </select></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Email</label>
+                  <input name="email" value="${esc(u.email || '')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Estado</label>
+                  <select name="estado" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    ${['Activo', 'Inactivo'].map(e => `<option ${u.estado === e ? 'selected' : ''}>${e}</option>`).join('')}
+                  </select></div>
+              </form>`,
+            acciones: `
+              <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+              <button id="guardar-usuario" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar</button>`,
+          });
+          document.getElementById('guardar-usuario').addEventListener('click', async () => {
+            const datos = Object.fromEntries(new FormData(document.getElementById('form-editar-usuario')).entries());
+            await Store.update('usuarios', u.id, datos);
+            await Shell.registrarAuditoria('editar_usuario', `Usuario ${datos.nombre} actualizado`);
+            Shell.cerrarModal();
+            Shell.aviso('Usuario actualizado.');
+            await this.cargar();
+            this.render();
+          });
+        }));
+      },
+
+      _render_horarios() {
+        return `
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                    <th class="px-4 py-3 font-bold">Médico</th>
+                    <th class="px-4 py-3 font-bold">Día</th>
+                    <th class="px-4 py-3 font-bold">Horario</th>
+                    <th class="px-4 py-3 font-bold">Consultorio</th>
+                    <th class="px-4 py-3 font-bold text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${this.horarios.length ? this.horarios.map(h => {
+                    const m = this.medicos.find(x => x.id === h.medico_id);
+                    return `<tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                      <td class="px-4 py-3 font-bold">${esc(m ? m.nombre : '—')}</td>
+                      <td class="px-4 py-3">${DIAS[h.dia_semana] || esc(h.dia_semana)}</td>
+                      <td class="px-4 py-3 tabular-nums">${esc(h.desde)} – ${esc(h.hasta)}</td>
+                      <td class="px-4 py-3">${esc(m ? m.consultorio : h.consultorio || '—')}</td>
+                      <td class="px-4 py-3 text-right">
+                        <button data-eliminar-horario="${h.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                      </td>
+                    </tr>`;
+                  }).join('') : `<tr><td colspan="5">${Shell.vacio('Sin horarios configurados.', 'schedule')}</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3">Nuevo horario de atención</h3>
+              <form id="form-horario" class="space-y-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Médico</label>
+                  <select name="medico_id" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    <option value="">Seleccione…</option>
+                    ${this.medicos.map(m => `<option value="${m.id}">${esc(m.nombre)} — ${esc(m.especialidad)}</option>`).join('')}
+                  </select></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Día de la semana</label>
+                  <select name="dia_semana" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                    ${Object.entries(DIAS).map(([v, n]) => `<option value="${v}">${n}</option>`).join('')}
+                  </select></div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div><label class="text-xs font-bold text-on-surface-variant">Desde</label>
+                    <input name="desde" type="time" value="08:00" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                  <div><label class="text-xs font-bold text-on-surface-variant">Hasta</label>
+                    <input name="hasta" type="time" value="12:00" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                </div>
+                <button class="w-full py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Agregar horario</button>
+              </form>
+            </div>
+          </div>`;
+      },
+
+      _conectar_horarios() {
+        document.getElementById('form-horario').addEventListener('submit', async ev => {
+          ev.preventDefault();
+          const datos = Object.fromEntries(new FormData(ev.target).entries());
+          if (datos.desde >= datos.hasta) { Shell.aviso('La hora de inicio debe ser anterior a la de fin.', 'error'); return; }
+          await Store.insert('horarios', { medico_id: datos.medico_id, dia_semana: Number(datos.dia_semana), desde: datos.desde, hasta: datos.hasta });
+          await Shell.registrarAuditoria('crear_horario', `Horario ${datos.desde}-${datos.hasta} agregado`);
+          Shell.aviso('Horario agregado.');
+          await this.cargar();
+          this.render();
+        });
+        document.querySelectorAll('[data-eliminar-horario]').forEach(b => b.addEventListener('click', async () => {
+          if (!confirm('¿Eliminar este horario?')) return;
+          await Store.remove('horarios', b.dataset.eliminarHorario);
+          await Shell.registrarAuditoria('eliminar_horario', 'Horario eliminado');
+          Shell.aviso('Horario eliminado.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      _render_feriados() {
+        const ordenados = [...this.feriados].sort((a, b) => a.fecha.localeCompare(b.fecha));
+        return `
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div class="xl:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                    <th class="px-4 py-3 font-bold">Fecha</th>
+                    <th class="px-4 py-3 font-bold">Descripción</th>
+                    <th class="px-4 py-3 font-bold">Ley</th>
+                    <th class="px-4 py-3 font-bold text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ordenados.map(f => `<tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                    <td class="px-4 py-3 font-bold tabular-nums">${formatearFecha(f.fecha)}</td>
+                    <td class="px-4 py-3">${esc(f.descripcion)}</td>
+                    <td class="px-4 py-3">${esc(f.ley || '—')}</td>
+                    <td class="px-4 py-3 text-right">
+                      <button data-eliminar-feriado="${f.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                    </td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3">Registrar feriado / suspensión</h3>
+              <form id="form-feriado" class="space-y-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Fecha</label>
+                  <input name="fecha" type="date" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Descripción</label>
+                  <input name="descripcion" required placeholder="Ej. Feriado nacional, mantenimiento…" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Ley / referencia</label>
+                  <input name="ley" placeholder="Ej. Ley 7544" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <button class="w-full py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Registrar</button>
+              </form>
+            </div>
+          </div>`;
+      },
+
+      _conectar_feriados() {
+        document.getElementById('form-feriado').addEventListener('submit', async ev => {
+          ev.preventDefault();
+          const datos = Object.fromEntries(new FormData(ev.target).entries());
+          await Store.insert('feriados', { fecha: datos.fecha, descripcion: datos.descripcion.trim(), ley: datos.ley || '' });
+          await Shell.registrarAuditoria('crear_feriado', `Feriado: ${datos.descripcion} (${datos.fecha})`);
+          Shell.aviso('Feriado registrado.');
+          await this.cargar();
+          this.render();
+        });
+        document.querySelectorAll('[data-eliminar-feriado]').forEach(b => b.addEventListener('click', async () => {
+          if (!confirm('¿Eliminar este feriado?')) return;
+          await Store.remove('feriados', b.dataset.eliminarFeriado);
+          await Shell.registrarAuditoria('eliminar_feriado', 'Feriado eliminado');
+          Shell.aviso('Feriado eliminado.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      _render_auditoria() {
+        const ordenados = [...this.auditoria].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+        return `
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">
+                  <th class="px-4 py-3 font-bold">Fecha y hora</th>
+                  <th class="px-4 py-3 font-bold">Usuario</th>
+                  <th class="px-4 py-3 font-bold">Acción</th>
+                  <th class="px-4 py-3 font-bold">Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ordenados.length ? ordenados.map(a => `<tr class="border-t border-outline-variant hover:bg-surface-container-low/60">
+                  <td class="px-4 py-3 tabular-nums">${new Date(a.fecha).toLocaleString('es-PY')}</td>
+                  <td class="px-4 py-3 font-bold">${esc(a.usuario || '—')}</td>
+                  <td class="px-4 py-3"><span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold">${esc(String(a.accion || '').replaceAll('_', ' '))}</span></td>
+                  <td class="px-4 py-3 text-on-surface-variant">${esc(a.detalle || '—')}</td>
+                </tr>`).join('') : `<tr><td colspan="4">${Shell.vacio('Sin registros de auditoría.', 'history')}</td></tr>`}
+              </tbody>
+            </table>
+          </div>`;
+      },
+
+      _render_configuracion() {
+        const config = JSON.parse(localStorage.getItem('clinisalud_config') || '{}');
+        return `
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3">Datos del establecimiento</h3>
+              <form id="form-config" class="space-y-3">
+                <div><label class="text-xs font-bold text-on-surface-variant">Nombre</label>
+                  <input name="nombre" value="${esc(config.nombre || 'Sanatorio Serena')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Dirección</label>
+                  <input name="direccion" value="${esc(config.direccion || 'Av. Mcal. López 1234, Asunción')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Teléfono</label>
+                  <input name="telefono" value="${esc(config.telefono || '(021) 555 000')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">RUC</label>
+                  <input name="ruc" value="${esc(config.ruc || '80012345-6')}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <button class="py-2.5 rounded-lg bg-secondary text-on-secondary text-sm font-bold hover:opacity-90">Guardar configuración</button>
+              </form>
+            </div>
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+              <h3 class="font-extrabold text-sm mb-3">Médicos del establecimiento</h3>
+              <ul class="divide-y divide-outline-variant/60 mb-4">
+                ${this.medicos.map(m => `<li class="py-2 flex items-center justify-between text-sm">
+                  <div><p class="font-bold">${esc(m.nombre)}</p><p class="text-xs text-on-surface-variant">${esc(m.especialidad)} · ${esc(m.consultorio)}</p></div>
+                  <p class="font-bold tabular-nums text-primary">${formatearMonto(m.precio_consulta)}</p>
+                </li>`).join('')}
+              </ul>
+              <form id="form-medico" class="grid grid-cols-2 gap-3 items-end">
+                <div class="col-span-2"><label class="text-xs font-bold text-on-surface-variant">Nuevo médico</label>
+                  <input name="nombre" required placeholder="Nombre completo" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Especialidad</label>
+                  <input name="especialidad" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Consultorio</label>
+                  <input name="consultorio" placeholder="Consultorio 1" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+                <div><label class="text-xs font-bold text-on-surface-variant">Arancel particular (₲)</label>
+                  <input name="precio_consulta" type="number" min="0" value="150000" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white tabular-nums"></div>
+                <button class="py-2.5 rounded-lg bg-primary text-on-primary text-sm font-bold hover:opacity-90">Agregar médico</button>
+              </form>
+            </div>
+          </div>`;
+      },
+
+      _conectar_configuracion() {
+        document.getElementById('form-config').addEventListener('submit', ev => {
+          ev.preventDefault();
+          const datos = Object.fromEntries(new FormData(ev.target).entries());
+          localStorage.setItem('clinisalud_config', JSON.stringify(datos));
+          Shell.aviso('Configuración guardada.');
+        });
+        document.getElementById('form-medico').addEventListener('submit', async ev => {
+          ev.preventDefault();
+          const datos = Object.fromEntries(new FormData(ev.target).entries());
+          await Store.insert('medicos', {
+            nombre: datos.nombre.trim(), especialidad: datos.especialidad.trim(),
+            consultorio: datos.consultorio || 'Consultorio 1',
+            precio_consulta: Number(datos.precio_consulta) || 0, estado: 'activo',
+          });
+          await Shell.registrarAuditoria('crear_medico', `Médico agregado: ${datos.nombre}`);
+          Shell.aviso('Médico agregado.');
+          await this.cargar();
+          this.render();
+        });
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Administracion.cargar();
+      await Administracion.render();
+    }
+  </script>
+</body>
+</html>

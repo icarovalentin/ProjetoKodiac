@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
+  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+
+  <div id="drawer-cita" class="fixed top-0 right-0 bottom-0 w-[420px] max-w-full bg-surface-container-lowest border-l border-outline-variant shadow-2xl z-50 translate-x-full transition-transform duration-300 flex flex-col">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant">
+      <div>
+        <h3 class="text-lg font-extrabold">Nueva Cita Médica</h3>
+        <p class="text-xs text-on-surface-variant">Complete los datos del turno</p>
+      </div>
+      <button id="drawer-cerrar" class="p-2 rounded-full hover:bg-surface-container-low">
+        <span class="material-symbols-outlined text-on-surface-variant">close</span>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-5 py-4 space-y-5" id="drawer-contenido"></div>
+    <div class="border-t border-outline-variant px-5 py-4 flex gap-2">
+      <button id="cita-cancelar" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+      <button id="cita-confirmar" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90 shadow">Confirmar y Agendar Turno</button>
+    </div>
+  </div>
+
+  <script>
+    window.PAGINA_ACTIVA = 'agenda';
+
+    const Agenda = {
+      fecha: hoyISO(),
+      vista: 'dia',
+      filtroEspecialidad: 'todas',
+      medicos: [], pacientes: [], turnos: [], feriados: [], horarios: [],
+      cita: { paciente: null, medico_id: '', hora: '', modalidad: 'Presencial', cobertura: 'Particular', motivo: '' },
+
+      async cargar() {
+        [this.medicos, this.pacientes, this.turnos, this.feriados, this.horarios] = await Promise.all([
+          Store.list('medicos'), Store.list('pacientes'), Store.list('turnos'),
+          Store.list('feriados'), Store.list('horarios'),
+        ]);
+      },
+
+      medico(id) { return this.medicos.find(m => m.id === id); },
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+      esFeriado(fecha) { return this.feriados.find(f => f.fecha === fecha); },
+      medicosFiltrados() {
+        return this.filtroEspecialidad === 'todas'
+          ? this.medicos
+          : this.medicos.filter(m => m.especialidad === this.filtroEspecialidad);
+      },
+      turnosDe(fecha, medicoId) {
+        return this.turnos.filter(t => t.fecha === fecha && t.medico_id === medicoId && t.estado !== 'cancelado');
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const feriado = this.esFeriado(this.fecha);
+        const banner = feriado ? `
+          <div class="rounded-2xl bg-amber-container border border-amber/20 px-5 py-3.5 flex items-center gap-3 mb-4">
+            <span class="material-symbols-outlined text-amber">celebration</span>
+            <div>
+              <p class="text-sm font-bold text-amber">Feriado nacional: ${esc(feriado.descripcion)} ${feriado.ley ? '(' + esc(feriado.ley) + ')' : ''}</p>
+              <p class="text-xs text-amber/80">La agenda de este día se encuentra con atención limitada.</p>
+            </div>
+          </div>` : '';
+        const especialidades = [...new Set(this.medicos.map(m => m.especialidad))];
+        const cuerpo = this.vista === 'dia' ? this._grillaDia() : this._grillaSemana();
+        main.innerHTML = `
+          ${banner}
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-extrabold">Agenda de Turnos</h1>
+              <p class="text-sm text-on-surface-variant capitalize">${fechaLarga(this.fecha)}</p>
+            </div>
+            <div class="flex-1"></div>
+            <div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden">
+              <button id="dia-anterior" class="p-2 hover:bg-surface-container-low"><span class="material-symbols-outlined text-[20px]">chevron_left</span></button>
+              <button id="ir-hoy" class="px-3 py-2 text-xs font-bold text-primary hover:bg-surface-container-low">Hoy</button>
+              <button id="dia-siguiente" class="p-2 hover:bg-surface-container-low"><span class="material-symbols-outlined text-[20px]">chevron_right</span></button>
+            </div>
+            <div class="flex bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden text-xs font-bold">
+              <button id="vista-dia" class="px-3 py-2 ${this.vista === 'dia' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}">Día</button>
+              <button id="vista-semana" class="px-3 py-2 ${this.vista === 'semana' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}">Semana</button>
+            </div>
+            <select id="filtro-especialidad" class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-sm">
+              <option value="todas">Todas las especialidades</option>
+              ${especialidades.map(e => `<option value="${esc(e)}" ${this.filtroEspecialidad === e ? 'selected' : ''}>${esc(e)}</option>`).join('')}
+            </select>
+            <button id="btn-nueva-cita" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow hover:opacity-90">
+              <span class="material-symbols-outlined text-[18px]">add</span>Nueva Cita
+            </button>
+          </div>
+          ${cuerpo}`;
+        this._conectarToolbar();
+        this._conectarTarjetas();
+      },
+
+      _grillaDia() {
+        const horas = [];
+        for (let h = 8; h <= 18; h++) { horas.push(`${String(h).padStart(2, '0')}:00`); horas.push(`${String(h).padStart(2, '0')}:30`); }
+        const medicos = this.medicosFiltrados();
+        if (!medicos.length) return Shell.vacio('No hay médicos para la especialidad seleccionada.', 'event_busy');
+        const cabecera = medicos.map(m => `
+          <div class="min-w-[240px] flex-1 px-4 py-3 border-l border-outline-variant">
+            <p class="font-bold text-sm">${esc(m.nombre)}</p>
+            <p class="text-xs text-on-surface-variant">${esc(m.especialidad)} · ${esc(m.consultorio)}</p>
+          </div>`).join('');
+        const filas = horas.map(hora => {
+          const celdas = medicos.map(m => {
+            const turno = this.turnosDe(this.fecha, m.id).find(t => t.hora === hora);
+            const p = turno ? this.paciente(turno.paciente_id) : null;
+            const contenido = turno ? `
+              <button data-turno="${turno.id}" class="w-full text-left rounded-lg border px-3 py-2 hover:shadow-md transition-shadow ${turno.estado === 'cancelado' ? 'bg-error-container border-error/20 opacity-70' : turno.estado === 'pendiente' ? 'bg-amber-container border-amber/20' : 'bg-surface-container-low border-primary/20'}">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-sm font-bold truncate">${esc(p ? p.nombre_completo : 'Paciente')}</p>
+                  ${badgeEstado(turno.estado)}
+                </div>
+                <p class="text-[11px] text-on-surface-variant mt-0.5 truncate">C.I. ${esc(p ? p.cedula_identidad : '—')} · ${esc(turno.cobertura || 'Particular')}</p>
+                <div class="flex items-center justify-between mt-1">
+                  <span class="text-[11px] font-semibold text-on-surface-variant flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">${turno.modalidad === 'Telemedicina' ? 'videocam' : 'person'}</span>${esc(turno.modalidad || 'Presencial')}
+                  </span>
+                  <span class="text-[11px] font-bold text-primary tabular-nums">${formatearMonto(turno.precio || 0)}</span>
+                </div>
+              </button>` : '';
+            return `<div class="min-w-[240px] flex-1 border-l border-outline-variant px-2 py-1 min-h-[64px]">${contenido}</div>`;
+          }).join('');
+          return `<div class="flex border-t border-outline-variant">
+            <div class="w-20 shrink-0 px-2 pt-2 text-[11px] font-bold text-on-surface-variant text-right tabular-nums">${hora}</div>
+            ${celdas}
+          </div>`;
+        }).join('');
+        return `
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+            <div class="flex bg-surface-container-low">
+              <div class="w-20 shrink-0"></div>${cabecera}
+            </div>
+            <div class="overflow-x-auto">${filas}</div>
+          </div>`;
+      },
+
+      _grillaSemana() {
+        const base = new Date(this.fecha + 'T12:00:00');
+        const inicio = new Date(base);
+        inicio.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+        const dias = [...Array(7)].map((_, i) => {
+          const d = new Date(inicio);
+          d.setDate(inicio.getDate() + i);
+          return d.toISOString().slice(0, 10);
+        });
+        const columnas = dias.map(f => {
+          const feriado = this.esFeriado(f);
+          const total = this.turnos.filter(t => t.fecha === f && t.estado !== 'cancelado').length;
+          const esHoy = f === hoyISO();
+          const fechaObj = new Date(f + 'T12:00:00');
+          return `<div class="flex-1 border-l border-outline-variant p-3 ${esHoy ? 'bg-primary-fixed/40' : ''}">
+            <p class="text-xs font-bold capitalize">${fechaObj.toLocaleDateString('es-PY', { weekday: 'long' })}</p>
+            <p class="text-lg font-extrabold ${feriado ? 'text-alerta' : ''}">${f.slice(8)}/${f.slice(5, 7)}</p>
+            ${feriado ? `<p class="text-[10px] font-bold text-alerta mt-1">${esc(feriado.descripcion)}</p>` : `<p class="text-xs text-on-surface-variant mt-1">${total} turno${total === 1 ? '' : 's'}</p>`}
+            <button data-ir-dia="${f}" class="mt-2 text-[11px] font-bold text-primary hover:underline">Ver día</button>
+          </div>`;
+        }).join('');
+        return `<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant flex min-h-[300px]">${columnas}</div>`;
+      },
+
+      _conectarToolbar() {
+        document.getElementById('dia-anterior').addEventListener('click', () => this._moverDia(-1));
+        document.getElementById('dia-siguiente').addEventListener('click', () => this._moverDia(1));
+        document.getElementById('ir-hoy').addEventListener('click', () => { this.fecha = hoyISO(); this.vista = 'dia'; this.render(); });
+        document.getElementById('vista-dia').addEventListener('click', () => { this.vista = 'dia'; this.render(); });
+        document.getElementById('vista-semana').addEventListener('click', () => { this.vista = 'semana'; this.render(); });
+        document.getElementById('filtro-especialidad').addEventListener('change', ev => { this.filtroEspecialidad = ev.target.value; this.render(); });
+        document.getElementById('btn-nueva-cita').addEventListener('click', () => this.abrirDrawer());
+        document.querySelectorAll('[data-ir-dia]').forEach(b => b.addEventListener('click', () => {
+          this.fecha = b.dataset.irDia; this.vista = 'dia'; this.render();
+        }));
+      },
+
+      _moverDia(offset) {
+        const d = new Date(this.fecha + 'T12:00:00');
+        d.setDate(d.getDate() + offset);
+        this.fecha = d.toISOString().slice(0, 10);
+        this.render();
+      },
+
+      _conectarTarjetas() {
+        document.querySelectorAll('[data-turno]').forEach(b => b.addEventListener('click', () => this.verTurno(b.dataset.turno)));
+      },
+
+      async verTurno(id) {
+        const turno = this.turnos.find(t => t.id === id);
+        if (!turno) return;
+        const p = this.paciente(turno.paciente_id);
+        const m = this.medico(turno.medico_id);
+        const acciones = [];
+        if (turno.estado === 'pendiente') acciones.push(`<button data-acc="confirmado" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary-container text-on-secondary-container hover:opacity-90">Confirmar turno</button>`);
+        if (['confirmado', 'pendiente'].includes(turno.estado)) acciones.push(`<button data-acc="sala_espera" class="px-4 py-2 rounded-lg text-sm font-bold bg-primary-fixed text-primary hover:opacity-90">Enviar a sala de espera</button>`);
+        if (turno.estado === 'sala_espera') acciones.push(`<button data-acc="atendido" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary-container text-on-secondary-container hover:opacity-90">Marcar atendido</button>`);
+        if (!['cancelado', 'atendido'].includes(turno.estado)) acciones.push(`<button data-acc="cancelado" class="px-4 py-2 rounded-lg text-sm font-bold bg-error-container text-on-error-container hover:opacity-90">Cancelar turno</button>`);
+        Shell.modal({
+          titulo: 'Detalle del turno',
+          contenido: `
+            <div class="space-y-2 text-sm">
+              <p><span class="font-bold">Paciente:</span> ${esc(p ? p.nombre_completo : '—')} (C.I. ${esc(p ? p.cedula_identidad : '—')})</p>
+              <p><span class="font-bold">Médico:</span> ${esc(m ? m.nombre : '—')} · ${esc(m ? m.especialidad : '')}</p>
+              <p><span class="font-bold">Fecha y hora:</span> ${formatearFecha(turno.fecha)} ${esc(turno.hora)}</p>
+              <p><span class="font-bold">Modalidad:</span> ${esc(turno.modalidad || 'Presencial')}</p>
+              <p><span class="font-bold">Cobertura:</span> ${esc(turno.cobertura || 'Particular')} · <span class="font-bold tabular-nums">${formatearMonto(turno.precio || 0)}</span></p>
+              <p><span class="font-bold">Motivo:</span> ${esc(turno.motivo || '—')}</p>
+              <p><span class="font-bold">Estado:</span> ${badgeEstado(turno.estado)}</p>
+            </div>`,
+          acciones: acciones.join('') + `<button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cerrar</button>`,
+        });
+        document.querySelectorAll('[data-acc]').forEach(b => b.addEventListener('click', async () => {
+          await Store.update('turnos', turno.id, { estado: b.dataset.acc });
+          await Shell.registrarAuditoria('actualizar_turno', `Turno de ${p ? p.nombre_completo : 'paciente'} → ${b.dataset.acc}`);
+          Shell.cerrarModal();
+          Shell.aviso('Turno actualizado correctamente.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      abrirDrawer() {
+        this.cita = { paciente: null, medico_id: '', hora: '', modalidad: 'Presencial', cobertura: 'Particular', motivo: '', fechaSel: this.fecha };
+        document.getElementById('drawer-cita').classList.remove('translate-x-full');
+        this.renderDrawer();
+      },
+
+      cerrarDrawer() {
+        document.getElementById('drawer-cita').classList.add('translate-x-full');
+      },
+
+      renderDrawer() {
+        const c = this.cita;
+        const cont = document.getElementById('drawer-contenido');
+        cont.innerHTML = `
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">1. Paciente</p>
+            <div class="flex gap-2">
+              <input id="cita-ci" type="text" placeholder="Cédula de identidad (ej. 4.123.456)" class="flex-1 border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              <button id="cita-buscar" class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-bold">Buscar</button>
+            </div>
+            <div id="cita-resultado" class="mt-2"></div>
+            <div id="cita-nuevo-paciente" class="mt-2 hidden border border-dashed border-outline-variant rounded-lg p-3 space-y-2">
+              <input id="np-nombre" placeholder="Nombre completo" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              <input id="np-telefono" placeholder="Teléfono (ej. 0981 123 456)" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              <button id="np-guardar" class="w-full py-2 rounded-lg bg-secondary text-on-secondary text-sm font-bold">Crear paciente y seleccionarlo</button>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">2. Médico</p>
+            <select id="cita-medico" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              <option value="">Seleccione un médico…</option>
+              ${this.medicos.map(m => `<option value="${m.id}" ${c.medico_id === m.id ? 'selected' : ''}>${esc(m.nombre)} — ${esc(m.especialidad)} (${esc(m.consultorio)})</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">3. Fecha y horario</p>
+            <input id="cita-fecha" type="date" value="${c.fechaSel || this.fecha}" min="${hoyISO()}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+            <div id="cita-slots" class="flex flex-wrap gap-2 mt-2">${this._slotsDisponibles()}</div>
+          </div>
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">4. Modalidad</p>
+            <div class="flex gap-4 text-sm">
+              <label class="flex items-center gap-2"><input type="radio" name="modalidad" value="Presencial" ${c.modalidad === 'Presencial' ? 'checked' : ''}>Presencial</label>
+              <label class="flex items-center gap-2"><input type="radio" name="modalidad" value="Telemedicina" ${c.modalidad === 'Telemedicina' ? 'checked' : ''}>Telemedicina</label>
+            </div>
+          </div>
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">5. Cobertura</p>
+            <select id="cita-cobertura" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+              ${['Santa Clara', 'Asismed', 'SPS', 'Particular'].map(op => `<option ${c.cobertura === op ? 'selected' : ''}>${op}</option>`).join('')}
+            </select>
+            <p id="cita-copago" class="text-xs text-on-surface-variant mt-1"></p>
+          </div>
+          <div>
+            <p class="text-xs font-extrabold uppercase tracking-wide text-on-surface-variant mb-2">6. Motivo de consulta</p>
+            <textarea id="cita-motivo" rows="3" placeholder="Motivo de la consulta…" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">${esc(c.motivo)}</textarea>
+          </div>`;
+        this._conectarDrawer();
+      },
+
+      _slotsDisponibles() {
+        const c = this.cita;
+        if (!c.medico_id) return '<p class="text-xs text-on-surface-variant">Seleccione un médico para ver los horarios disponibles.</p>';
+        const fechaSel = c.fechaSel || this.fecha;
+        const fecha = new Date(fechaSel + 'T12:00:00');
+        const dia = fecha.getDay() === 0 ? 7 : fecha.getDay();
+        const rango = this.horarios.find(h => h.medico_id === c.medico_id && Number(h.dia_semana) === dia);
+        if (!rango) return '<p class="text-xs text-amber font-semibold">El médico no atiende este día. Verifique los horarios en Administración.</p>';
+        const [dh, dm] = rango.desde.split(':').map(Number);
+        const [hh, hm] = rango.hasta.split(':').map(Number);
+        const slots = [];
+        for (let min = dh * 60 + dm; min < hh * 60 + hm; min += 30) {
+          slots.push(`${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`);
+        }
+        const ocupados = this.turnosDe(fechaSel, c.medico_id).map(t => t.hora);
+        return slots.map(s => {
+          const ocupado = ocupados.includes(s);
+          const activo = c.hora === s;
+          return `<button data-slot="${s}" ${ocupado ? 'disabled' : ''} class="px-3 py-1.5 rounded-full text-xs font-bold border tabular-nums ${activo ? 'bg-primary text-on-primary border-primary' : ocupado ? 'bg-surface-container-high text-on-surface-variant/50 line-through cursor-not-allowed border-transparent' : 'border-outline-variant hover:bg-surface-container-low'}">${s}</button>`;
+        }).join('');
+      },
+
+      _conectarDrawer() {
+        const c = this.cita;
+        document.getElementById('drawer-cerrar').addEventListener('click', () => this.cerrarDrawer());
+        document.getElementById('cita-cancelar').addEventListener('click', () => this.cerrarDrawer());
+        document.getElementById('cita-buscar').addEventListener('click', () => this._buscarPaciente());
+        document.getElementById('cita-ci').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); this._buscarPaciente(); } });
+        document.getElementById('np-guardar').addEventListener('click', () => this._crearPaciente());
+        document.getElementById('cita-medico').addEventListener('change', ev => {
+          c.medico_id = ev.target.value; c.hora = '';
+          this._refrescarSlotsYCobertura();
+        });
+        document.getElementById('cita-fecha').addEventListener('change', ev => {
+          c.fechaSel = ev.target.value; c.hora = '';
+          this._refrescarSlotsYCobertura();
+        });
+        document.querySelectorAll('input[name="modalidad"]').forEach(r => r.addEventListener('change', ev => { c.modalidad = ev.target.value; }));
+        document.getElementById('cita-cobertura').addEventListener('change', ev => { c.cobertura = ev.target.value; this._mostrarCopago(); });
+        document.getElementById('cita-motivo').addEventListener('input', ev => { c.motivo = ev.target.value; });
+        this._refrescarSlotsYCobertura();
+      },
+
+      _refrescarSlotsYCobertura() {
+        const zona = document.getElementById('cita-slots');
+        if (zona) {
+          zona.innerHTML = this._slotsDisponibles();
+          zona.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
+            this.cita.hora = b.dataset.slot;
+            this._refrescarSlotsYCobertura();
+          }));
+        }
+        this._mostrarCopago();
+      },
+
+      _mostrarCopago() {
+        const el = document.getElementById('cita-copago');
+        if (!el) return;
+        const m = this.medico(this.cita.medico_id);
+        const precio = m ? m.precio_consulta : 0;
+        el.innerHTML = this.cita.cobertura === 'Particular'
+          ? `Arancel particular: <span class="font-bold text-primary tabular-nums">${formatearMonto(precio)}</span>`
+          : `Cobertura ${esc(this.cita.cobertura)}: <span class="font-bold text-secondary">copago ₲ 0</span>`;
+      },
+
+      async _buscarPaciente() {
+        const ci = document.getElementById('cita-ci').value.trim();
+        const res = document.getElementById('cita-resultado');
+        if (!ci) { res.innerHTML = '<p class="text-xs text-error">Ingrese una cédula para buscar.</p>'; return; }
+        const limpiar = s => String(s).replace(/[.\-\s]/g, '');
+        const p = this.pacientes.find(x => limpiar(x.cedula_identidad) === limpiar(ci));
+        if (p) {
+          this.cita.paciente = p;
+          res.innerHTML = this._tarjetaPaciente(p, 'encontrado');
+          document.getElementById('cita-nuevo-paciente').classList.add('hidden');
+        } else {
+          this.cita.paciente = null;
+          document.getElementById('cita-nuevo-paciente').classList.remove('hidden');
+          res.innerHTML = '<p class="text-xs text-amber font-semibold">Paciente no encontrado. Complete los datos para crearlo.</p>';
+        }
+      },
+
+      _tarjetaPaciente(p, nota) {
+        return `
+          <div class="rounded-lg bg-secondary-container/40 border border-secondary/30 px-3 py-2 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">${esc(Shell._iniciales(p.nombre_completo))}</div>
+            <div>
+              <p class="text-sm font-bold">${esc(p.nombre_completo)}</p>
+              <p class="text-[11px] text-on-surface-variant">C.I. ${esc(p.cedula_identidad)} · ${esc(p.telefono || 'sin teléfono')} · ${nota}</p>
+            </div>
+          </div>`;
+      },
+
+      async _crearPaciente() {
+        const nombre = document.getElementById('np-nombre').value.trim();
+        const telefono = document.getElementById('np-telefono').value.trim();
+        const ci = document.getElementById('cita-ci').value.trim();
+        if (!nombre || !ci) { Shell.aviso('Complete nombre y cédula del paciente.', 'error'); return; }
+        const p = await Store.insert('pacientes', { nombre_completo: nombre, cedula_identidad: ci, telefono, email: '', direccion: '', sangre_tipo: '', alergias: '' });
+        await Shell.registrarAuditoria('crear_paciente', `Nuevo paciente: ${nombre} (C.I. ${ci})`);
+        this.pacientes = await Store.list('pacientes');
+        this.cita.paciente = p;
+        document.getElementById('cita-nuevo-paciente').classList.add('hidden');
+        document.getElementById('cita-resultado').innerHTML = this._tarjetaPaciente(p, 'creado ahora');
+        Shell.aviso('Paciente creado correctamente.');
+      },
+
+      async confirmar() {
+        const c = this.cita;
+        const fecha = document.getElementById('cita-fecha').value;
+        if (!c.paciente) { Shell.aviso('Busque o cree el paciente primero.', 'error'); return; }
+        if (!c.medico_id) { Shell.aviso('Seleccione un médico.', 'error'); return; }
+        if (!c.hora) { Shell.aviso('Seleccione un horario disponible.', 'error'); return; }
+        const m = this.medico(c.medico_id);
+        await Store.insert('turnos', {
+          paciente_id: c.paciente.id,
+          medico_id: c.medico_id,
+          fecha,
+          hora: c.hora,
+          motivo: c.motivo || 'Consulta médica',
+          estado: 'confirmado',
+          sobreturno: false,
+          especialidad: m.especialidad,
+          consultorio: m.consultorio,
+          modalidad: c.modalidad,
+          cobertura: c.cobertura,
+          precio: c.cobertura === 'Particular' ? m.precio_consulta : 0,
+        });
+        await Shell.registrarAuditoria('crear_turno', `Turno para ${c.paciente.nombre_completo} con ${m.nombre} el ${fecha} ${c.hora}`);
+        this.cerrarDrawer();
+        Shell.aviso('Turno agendado correctamente.');
+        await this.cargar();
+        this.fecha = fecha;
+        this.render();
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Agenda.cargar();
+      await Agenda.render();
+      document.getElementById('cita-confirmar').addEventListener('click', () => Agenda.confirmar());
+    }
+  </script>
+</body>
+</html>

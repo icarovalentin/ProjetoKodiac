@@ -122,7 +122,7 @@
         if (!user) { window.location.href = 'login.html'; return; }
         const { data: perfil } = await window.sb.from('profiles')
           .select('nombre_completo, rol').eq('id', user.id).single();
-        if (!perfil || perfil.rol !== ROLES.PACIENTE) { window.location.href = 'dashboard.html'; return; }
+        if (!perfil || perfil.rol !== ROLES.PACIENTE) { window.location.href = 'agenda.html'; return; }
         miNombre = perfil.nombre_completo;
         const { data: yo } = await window.sb.from('pacientes')
           .select('id').eq('email', user.email).maybeSingle();
