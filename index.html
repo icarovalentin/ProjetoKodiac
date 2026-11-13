@@ -1,250 +1,998 @@
 <!DOCTYPE html>
-<html lang="es-PY">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CliniSalud — Sistema de gestión para clínicas y consultorios</title>
-  <meta name="description" content="Gestión de agendas médicas, historias clínicas, recetas y certificados. Sistema para clínicas y consultorios en Paraguay." />
-  <style>
-    :root {
-      --azul: #0e5aa7;
-      --azul-oscuro: #0a3d73;
-      --celeste: #e8f2fb;
-      --verde: #1a9e6e;
-      --texto: #1f2937;
-      --gris: #6b7280;
-      --blanco: #ffffff;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      color: var(--texto);
-      background: var(--blanco);
-      line-height: 1.6;
-    }
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 5%;
-      background: var(--blanco);
-      position: sticky; top: 0; z-index: 10;
-      box-shadow: 0 1px 4px rgba(0,0,0,.08);
-    }
-    .logo { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.25rem; color: var(--azul); }
-    .logo .cruz {
-      background: var(--azul); color: #fff; width: 34px; height: 34px;
-      border-radius: 8px; display: grid; place-items: center; font-size: 1.1rem;
-    }
-    nav a { color: var(--texto); text-decoration: none; margin-left: 1.5rem; font-size: .95rem; }
-    nav a:hover { color: var(--azul); }
-    .btn {
-      display: inline-block; padding: .7rem 1.6rem; border-radius: 8px;
-      text-decoration: none; font-weight: 600; transition: background .2s;
-    }
-    .btn-primario { background: var(--azul); color: #fff; }
-    .btn-primario:hover { background: var(--azul-oscuro); }
-    .btn-contorno { border: 2px solid var(--azul); color: var(--azul); }
-    .btn-contorno:hover { background: var(--celeste); }
 
-    .hero {
-      display: grid; grid-template-columns: 1.1fr 1fr; gap: 3rem;
-      align-items: center; padding: 4rem 5%;
-      background: linear-gradient(135deg, var(--celeste) 0%, #f7fbff 100%);
+<html class="scroll-smooth" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><title>Sanatorio Serena - Asunción, Paraguay</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&amp;family=Space+Grotesk:wght@500;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>
+    @layer base { 
+      html, body { margin: 0; padding: 0; } 
+      body { overscroll-behavior: none; } 
+      main > :first-child { margin-top: 0 !important; } 
+      main > :last-child { margin-bottom: 0 !important; } 
+    } 
+    ::-webkit-scrollbar { display: none; }
+    
+    /* Dynamic Kinetic Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(0.4deg); }
     }
-    .hero h1 { font-size: 2.4rem; line-height: 1.2; color: var(--azul-oscuro); }
-    .hero h1 span { color: var(--verde); }
-    .hero p { margin: 1.2rem 0 2rem; font-size: 1.1rem; color: var(--gris); max-width: 34rem; }
-    .hero-acciones { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .hero-visual {
-      background: var(--blanco); border-radius: 16px; box-shadow: 0 10px 30px rgba(14,90,167,.15);
-      padding: 1.5rem; font-size: .9rem;
+    @keyframes float-slow {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-14px) scale(1.015); }
     }
-    .hero-visual .fila {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: .65rem .9rem; border-radius: 8px; margin-bottom: .5rem; background: #f8fafc;
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.08); }
     }
-    .hero-visual .fila b { color: var(--azul-oscuro); }
-    .badge { font-size: .75rem; padding: .15rem .6rem; border-radius: 999px; font-weight: 600; }
-    .badge-verde { background: #d9f2e6; color: var(--verde); }
-    .badge-azul { background: var(--celeste); color: var(--azul); }
-    .badge-amarillo { background: #fdf3d7; color: #a16207; }
+    @keyframes beam-flow {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
 
-    .seccion { padding: 3.5rem 5%; }
-    .seccion h2 { text-align: center; color: var(--azul-oscuro); font-size: 1.9rem; margin-bottom: .5rem; }
-    .seccion .sub { text-align: center; color: var(--gris); margin-bottom: 2.5rem; }
-    .grid-modulos {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+    .animate-float {
+      animation: float 5s ease-in-out infinite;
     }
-    .modulo {
-      background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px;
-      padding: 1.5rem; transition: transform .2s, box-shadow .2s;
+    .animate-float-slow {
+      animation: float-slow 7s ease-in-out infinite;
     }
-    .modulo:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(14,90,167,.12); }
-    .modulo .icono { font-size: 2rem; }
-    .modulo h3 { color: var(--azul-oscuro); margin: .6rem 0 .4rem; }
-    .modulo p { color: var(--gris); font-size: .95rem; }
-
-    .roles { background: var(--azul-oscuro); color: #fff; }
-    .roles h2 { color: #fff; }
-    .roles .sub { color: #c7d8ec; }
-    .grid-roles {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1.5rem; max-width: 1100px; margin: 0 auto;
+    .animate-pulse-glow {
+      animation: pulse-glow 4s ease-in-out infinite;
     }
-    .tarjeta-rol {
-      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
-      border-radius: 12px; padding: 1.5rem;
+    .beam-traveler {
+      animation: beam-flow 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }
-    .tarjeta-rol h3 { margin-bottom: .5rem; }
-    .tarjeta-rol ul { list-style: none; }
-    .tarjeta-rol li { font-size: .92rem; color: #dce8f5; padding: .2rem 0; }
-    .tarjeta-rol li::before { content: "✓ "; color: var(--verde); font-weight: 700; }
-
-    footer {
-      background: #0b2545; color: #9fb3c8; text-align: center;
-      padding: 1.5rem 5%; font-size: .9rem;
+    .shimmer-bg {
+      background: linear-gradient(90deg, rgba(225,29,72,0) 0%, rgba(225,29,72,0.15) 50%, rgba(225,29,72,0) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 4s infinite linear;
     }
-    @media (max-width: 800px) {
-      .hero { grid-template-columns: 1fr; padding: 2.5rem 5%; }
-      nav a { margin-left: .8rem; }
-      .hero h1 { font-size: 1.8rem; }
+
+    .crimson-glow {
+      box-shadow: 0 0 35px -5px rgba(225, 29, 72, 0.4);
     }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="logo"><span class="cruz">✚</span> CliniSalud</div>
-    <nav>
-      <a href="#modulos">Módulos</a>
-      <a href="#roles">Roles</a>
-      <a href="login.html" class="btn btn-primario">Ingresar al sistema</a>
-    </nav>
-  </header>
+    .crimson-glow-sm {
+      box-shadow: 0 4px 20px -2px rgba(225, 29, 72, 0.25);
+    }
+    .card-kinetic {
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .card-kinetic:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 22px 35px -10px rgba(225, 29, 72, 0.12), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+    }
+    .mesh-gradient {
+      background-image: radial-gradient(at 0% 0%, rgba(254, 226, 226, 0.7) 0px, transparent 50%),
+                        radial-gradient(at 100% 20%, rgba(255, 241, 242, 0.8) 0px, transparent 50%),
+                        radial-gradient(at 50% 100%, rgba(254, 205, 211, 0.3) 0px, transparent 60%);
+    }
+  </style><script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script><script id="tailwind-config">tailwind.config = { 
+  darkMode: "class", 
+  theme: { 
+    extend: { 
+      colors: { 
+        "primary": "#e11d48",           /* Vibrant Crimson */
+        "primary-hover": "#be123c",     /* Deep Crimson */
+        "primary-dark": "#9f1239",      /* Intense Ruby */
+        "primary-light": "#ffe4e6",     /* Soft Petal Tint */
+        "primary-glow": "rgba(225, 29, 72, 0.15)",
+        "secondary": "#0f172a",         /* Deep Slate / Midnight Contrast */
+        "secondary-light": "#1e293b",
+        "surface": "#ffffff",
+        "surface-subtle": "#fff1f2",    /* Soft Warm Neo-Rose Surface */
+        "surface-container": "#fff5f6",
+        "surface-container-high": "#ffe4e6",
+        "surface-dark": "#090d16",
+        "on-surface": "#0f172a",        /* High Contrast Charcoal */
+        "on-surface-variant": "#475569",/* Slate Neutral */
+        "outline-crimson": "#fecdd3",
+        "accent-emerald": "#10b981",    /* Fresh Status Emerald */
+        "border-subtle": "#f1f5f9"
+      }, 
+      borderRadius: { 
+        "DEFAULT": "0.375rem", 
+        "lg": "0.75rem", 
+        "xl": "1rem", 
+        "2xl": "1.5rem",
+        "3xl": "2rem",
+        "full": "9999px" 
+      }, 
+      fontFamily: { 
+        sans: ["Outfit", "sans-serif"],
+        display: ["Space Grotesk", "sans-serif"]
+      }
+    } 
+  } 
+}</script></head><body class="bg-surface font-sans text-on-surface selection:bg-primary-light selection:text-primary antialiased"><header class="fixed top-0 left-0 right-0 z-50 bg-white/85 backdrop-blur-xl border-b border-primary-light/60 transition-all duration-300 shadow-sm"><div class="h-20 max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between gap-4"><div class="flex items-center gap-3 group cursor-pointer"><div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary to-primary-hover p-0.5 flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 group-hover:rotate-3 transition-transform duration-300"><img alt="Logo Clínica Serena" class="h-6 w-auto object-contain brightness-0 invert" src="https://lh3.googleusercontent.com/aida/ALJJyrCkKAfON8pDE0tTgzRPRerXOLmIfDrKHSEj5iyRGvq9_VOslTNlvbWNqCZa9BRg5oqTNg15sdROvRT26ZraHvn0iWQ0tKWkgjb9NTX9LegO3aoMn521pxKpotjNLFCHSGxlxjxonXpOJxnHIQYSShI85rx8Px_8mfwcoPjw6LBGSY_JRxR_7F0cgfy4idO0MPJ-kASXuCGdQJCnmC7W-YszNli7uav9Lb-awtdkDOIQ"/></div><span class="font-display text-xl text-on-surface tracking-tight font-bold group-hover:text-primary transition-colors">Sanatorio Serena</span></div><nav class="hidden xl:flex items-center gap-1.5 p-1.5 rounded-full bg-slate-100/70 border border-slate-200/50 backdrop-blur-md"><a class="px-4 py-2 font-medium text-sm text-on-surface-variant hover:text-primary hover:bg-white rounded-full transition-all duration-200 hover:shadow-sm" data-path="servicios" href="#servicios">Servicios</a><a class="px-4 py-2 font-medium text-sm text-on-surface-variant hover:text-primary hover:bg-white rounded-full transition-all duration-200 hover:shadow-sm" data-path="medicos" href="#medicos">Médicos</a><a class="px-4 py-2 font-medium text-sm text-on-surface-variant hover:text-primary hover:bg-white rounded-full transition-all duration-200 hover:shadow-sm" data-path="como-funciona" href="#como-funciona">Cómo Funciona</a><a class="px-4 py-2 font-medium text-sm text-on-surface-variant hover:text-primary hover:bg-white rounded-full transition-all duration-200 hover:shadow-sm" data-path="descarga-la-app" href="#descarga-la-app">Descargá la App</a><a class="px-4 py-2 font-medium text-sm text-on-surface-variant hover:text-primary hover:bg-white rounded-full transition-all duration-200 hover:shadow-sm" data-path="contacto" href="#contacto">Contacto</a></nav><div class="flex items-center gap-3"><a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-semibold text-xs tracking-wider uppercase transition-all duration-200 shadow-sm hover:shadow hover:-translate-y-0.5" data-path="login-staff" href="#" onclick="document.getElementById('staff-login-modal').classList.remove('hidden'); return false;"><span class="material-symbols-outlined text-[18px] text-rose-400 animate-pulse">key</span><span>Ingresar al sistema</span></a><div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 text-primary cursor-pointer hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"><span class="material-symbols-outlined text-[20px]">person</span></div></div></div></header><main class="w-full pt-20 bg-white min-h-[calc(100vh-80px)]"><div class="flex flex-col w-full">
+<!-- Top Ambient Banner (Urgent/Emergency Notice) -->
+<aside class="w-full bg-slate-950 text-white py-2.5 px-6 sm:px-12 border-b border-rose-950/40 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-rose-500/10 via-transparent to-rose-500/10 pointer-events-none"></div>
+<div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm font-medium relative z-10">
+<div class="flex items-center gap-2.5">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+</span>
+<span class="font-bold text-rose-400">Urgencias Diurnas &amp; Triage Rápido:</span>
+<span class="text-slate-300">Atención sin turno previo de 07:00 a 20:00 hs</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="inline-flex items-center gap-1.5 text-rose-400 font-semibold tracking-wide hover:scale-105 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-[16px] animate-bounce">call</span>
+<span>Central Telefónica: (021) 600 450</span>
+</span>
+<span class="hidden md:inline text-slate-700">•</span>
+<span class="hidden md:inline text-slate-400 font-normal">Av. Mcal. López 2840 c/ Denis Roa, Asunción</span>
+</div>
+</div>
+</aside>
+<!-- Hero Section with Bento Dynamic Levitation -->
+<section class="relative w-full overflow-hidden mesh-gradient py-16 lg:py-24 border-b border-rose-100/60">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 items-center">
+<!-- Text Column (7 cols) -->
+<div class="lg:col-span-7 flex flex-col gap-6 relative z-10">
+<div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/90 border border-rose-200/80 shadow-sm backdrop-blur-md w-fit hover:border-primary/50 hover:shadow-md transition-all duration-300">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-80"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+<span class="text-xs uppercase tracking-wider text-slate-800 font-bold">Atención médica integral en Asunción</span>
+</div>
+<h1 class="font-display text-4xl sm:text-5xl lg:text-6xl text-slate-950 font-black tracking-tight leading-[1.08]">
+            Cuidamos de tu salud con <span class="bg-gradient-to-r from-primary via-rose-600 to-rose-500 bg-clip-text text-transparent hover:tracking-wide transition-all duration-300">calidez humana</span> y tecnología médica moderna.
+          </h1>
+<p class="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl">
+            Consultas presenciales y telemedicina con especialistas certificados. Atención ágil, registro clínico digital y seguimiento continuo para vos y tu familia.
+          </p>
+<!-- CTAs with Dynamic Micro-interactions -->
+<div class="flex flex-wrap items-center gap-4 pt-3">
+<a class="group inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-primary to-primary-hover text-white font-bold text-base transition-all duration-300 crimson-glow hover:-translate-y-1 hover:shadow-2xl hover:shadow-primary/40 active:translate-y-0 active:scale-95" href="#agendamiento">
+<span class="material-symbols-outlined text-[22px] group-hover:rotate-12 transition-transform duration-300">calendar_month</span>
+<span>Agendar cita online</span>
+</a>
+<button class="group inline-flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white/95 border border-slate-200 hover:border-rose-300 hover:bg-white text-slate-900 font-semibold text-sm transition-all duration-300 shadow-sm hover:shadow-lg hover:-translate-y-1 active:translate-y-0" onclick="document.getElementById('staff-login-modal').classList.remove('hidden')" type="button">
+<div class="w-8 h-8 rounded-lg bg-rose-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+<span class="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">lock</span>
+</div>
+<span class="text-left leading-tight">
+<span class="block text-slate-900 font-bold">Ingresar al sistema</span>
+<span class="block text-xs text-slate-500 font-normal">Personal médico y staff</span>
+</span>
+</button>
+</div>
+<!-- Trust Badges Row with animated icons -->
+<div class="pt-6 border-t border-rose-200/60 flex flex-wrap items-center gap-y-3 gap-x-6 text-slate-700 text-xs sm:text-sm font-semibold">
+<div class="flex items-center gap-2 group cursor-default">
+<span class="w-5 h-5 rounded-full bg-rose-500/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</span>
+<span>Registro MSPBS N° 4589</span>
+</div>
+<div class="flex items-center gap-2 group cursor-default">
+<span class="w-5 h-5 rounded-full bg-rose-500/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</span>
+<span>Convenios: Santa Clara, Asismed, SPS</span>
+</div>
+<div class="flex items-center gap-2 group cursor-default">
+<span class="w-5 h-5 rounded-full bg-rose-500/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[14px] font-bold">check</span>
+</span>
+<span>Historia clínica digital</span>
+</div>
+</div>
+</div>
+<!-- Visual Image Column (5 cols) with Floating Bento Card & Levitation -->
+<div class="lg:col-span-5 relative">
+<div class="relative rounded-3xl overflow-hidden shadow-2xl p-2 bg-gradient-to-tr from-rose-200 via-white to-rose-100 border border-rose-200/60 animate-float-slow">
+<div class="rounded-2xl overflow-hidden relative group">
+<img alt="Consulta médica humana y empática en Sanatorio Serena Asunción" class="w-full h-[470px] object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOOjjiIsLB1JZz0dRAaWwEUo40xeRuZM8o9hvkVmCe8NlFuOBpA3b5BCpAIAFUrBH1a0O_yy7bxJDZaAs2ZGG4n3HeNxEC5I3faBTgFTHqm33K0WwXs6MzICUhcRJUfbXLbbNMvme3-jlsVM78hFOBpqpEfDUUUMJGQihYH2mUyaZL-IWe1s4EcQ5hTUtIJGJzGTfDxRLjrrvBVRI5K_7V66-ULBLh1TBPzU2MeRM"/>
+<div class="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
+</div>
+<!-- Floating Notification Card with levitating kinetic bounce -->
+<div class="absolute bottom-6 left-6 right-6 p-4 rounded-2xl bg-white/95 backdrop-blur-xl border border-rose-100 shadow-xl flex items-center gap-3.5 animate-float hover:scale-[1.02] transition-transform duration-300">
+<div class="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-primary to-rose-500 flex items-center justify-center shrink-0 text-white shadow-md shadow-primary/30">
+<span class="material-symbols-outlined text-[24px]">stethoscope</span>
+<span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white animate-ping"></span>
+<span class="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-[11px] uppercase tracking-wider font-bold text-primary">Citas disponibles hoy</span>
+<span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+<span class="text-xs text-slate-500 font-medium">14:30 - 18:00</span>
+</div>
+<span class="text-sm font-bold text-slate-900 truncate">Dra. Valeria González</span>
+<span class="text-xs text-slate-500">Clínica Médica · Consultorio 4</span>
+</div>
+<a class="ml-auto w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-primary shrink-0 transition-all duration-300 shadow-sm hover:rotate-45 active:scale-95" href="#agendamiento" title="Reservar turno">
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Bold Graphic Animated Blobs -->
+<div class="absolute -top-12 -right-12 w-80 h-80 bg-rose-300/40 rounded-full blur-3xl -z-10 pointer-events-none animate-pulse-glow"></div>
+<div class="absolute -bottom-12 -left-12 w-80 h-80 bg-primary/20 rounded-full blur-3xl -z-10 pointer-events-none animate-pulse-glow" style="animation-delay: 2s;"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Metric Counters Row with Interactive Kinetic Cards -->
+<section class="w-full bg-slate-950 py-10 relative overflow-hidden">
+<div class="max-w-7xl mx-auto px-6 lg:px-12 grid grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
+<div class="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-rose-500/60 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-rose-950/50 transition-all duration-300 group cursor-default">
+<div class="w-13 h-13 p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[28px]">groups</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display text-2xl sm:text-3xl text-white font-bold leading-tight group-hover:text-rose-400 transition-colors">+18.000</span>
+<span class="text-xs text-slate-400 font-medium">Pacientes atendidos al año</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-rose-500/60 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-rose-950/50 transition-all duration-300 group cursor-default">
+<div class="w-13 h-13 p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[28px]">timer</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display text-2xl sm:text-3xl text-white font-bold leading-tight group-hover:text-rose-400 transition-colors">12 min</span>
+<span class="text-xs text-slate-400 font-medium">Promedio de espera con turno</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-rose-500/60 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-rose-950/50 transition-all duration-300 group cursor-default">
+<div class="w-13 h-13 p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[28px]">award_star</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display text-2xl sm:text-3xl text-white font-bold leading-tight group-hover:text-rose-400 transition-colors">32+</span>
+<span class="text-xs text-slate-400 font-medium">Especialistas certificados</span>
+</div>
+</div>
+<div class="flex items-center gap-4 p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-rose-500/60 hover:-translate-y-1.5 hover:shadow-lg hover:shadow-rose-950/50 transition-all duration-300 group cursor-default">
+<div class="w-13 h-13 p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+<span class="material-symbols-outlined text-[28px]">shield_with_heart</span>
+</div>
+<div class="flex flex-col">
+<span class="font-display text-2xl sm:text-3xl text-white font-bold leading-tight group-hover:text-rose-400 transition-colors">99.4%</span>
+<span class="text-xs text-slate-400 font-medium">Satisfacción de pacientes</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Servicios Destacados with Animated Kinetic Cards -->
+<section class="w-full py-20 bg-slate-50 relative overflow-hidden" id="servicios">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div class="flex flex-col gap-2 max-w-xl">
+<div class="inline-flex items-center gap-2">
+<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+<span class="text-xs uppercase tracking-widest text-primary font-bold">Atención de Primer Nivel</span>
+</div>
+<h2 class="font-display text-3xl sm:text-4xl text-slate-950 font-bold tracking-tight">Nuestros Servicios Médicos</h2>
+<p class="text-sm sm:text-base text-slate-600">Atención preventiva y especializada diseñada para tu bienestar, combinando calidez médica y precisión diagnóstica.</p>
+</div>
+<a class="inline-flex items-center gap-2 font-bold text-sm text-primary hover:text-primary-hover transition-all group" href="#agendamiento">
+<span>Ver cartilla y aranceles</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1.5 group-hover:-translate-y-1 transition-transform">north_east</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Servicio 1 -->
+<div class="card-kinetic flex flex-col justify-between p-7 rounded-3xl bg-white border border-slate-200/80 hover:border-primary group relative overflow-hidden">
+<div class="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<div class="flex flex-col gap-5">
+<div class="flex items-center justify-between">
+<div class="w-13 h-13 p-3.5 rounded-2xl bg-rose-50 text-primary group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+<span class="material-symbols-outlined text-[26px]">stethoscope</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 flex items-center gap-1.5 shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                Disponible hoy
+              </span>
+</div>
+<div>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-2 group-hover:text-primary transition-colors">Consulta Médica Presencial</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Especialidades clínicas, diagnóstico integral y seguimiento personalizado con historia clínica digital y triage previo.
+              </p>
+</div>
+</div>
+<div class="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-500">Desde <strong class="text-sm font-bold text-slate-900 block">₲ 180.000</strong></span>
+<a class="px-4 py-2 rounded-xl bg-rose-50 group-hover:bg-primary text-primary group-hover:text-white text-xs font-bold transition-all duration-200 inline-flex items-center gap-1 group-hover:gap-2 active:scale-95 shadow-sm" href="#agendamiento">
+<span>Agendar</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Servicio 2 -->
+<div class="card-kinetic flex flex-col justify-between p-7 rounded-3xl bg-white border border-slate-200/80 hover:border-primary group relative overflow-hidden">
+<div class="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<div class="flex flex-col gap-5">
+<div class="flex items-center justify-between">
+<div class="w-13 h-13 p-3.5 rounded-2xl bg-rose-50 text-primary group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+<span class="material-symbols-outlined text-[26px]">video_camera_front</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-rose-50 text-primary text-xs font-bold border border-rose-200">
+                Online Paraguay
+              </span>
+</div>
+<div>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-2 group-hover:text-primary transition-colors">Telemedicina</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Consultá con nuestros especialistas desde cualquier punto del país por videollamada cifrada con emisión de receta electrónica válida.
+              </p>
+</div>
+</div>
+<div class="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-500">Desde <strong class="text-sm font-bold text-slate-900 block">₲ 150.000</strong></span>
+<a class="px-4 py-2 rounded-xl bg-rose-50 group-hover:bg-primary text-primary group-hover:text-white text-xs font-bold transition-all duration-200 inline-flex items-center gap-1 group-hover:gap-2 active:scale-95 shadow-sm" href="#agendamiento">
+<span>Conectar</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Servicio 3 -->
+<div class="card-kinetic flex flex-col justify-between p-7 rounded-3xl bg-white border border-slate-200/80 hover:border-primary group relative overflow-hidden">
+<div class="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<div class="flex flex-col gap-5">
+<div class="flex items-center justify-between">
+<div class="w-13 h-13 p-3.5 rounded-2xl bg-rose-50 text-primary group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+<span class="material-symbols-outlined text-[26px]">scale</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-slate-100 text-slate-800 text-xs font-bold border border-slate-200">
+                Integral
+              </span>
+</div>
+<div>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-2 group-hover:text-primary transition-colors">Control de Peso y Metabolismo</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Enfoque médico interdisciplinario para salud metabólica, perfil lipídico, glucemia, nutrición clínica y seguimiento terapéutico.
+              </p>
+</div>
+</div>
+<div class="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-500">Desde <strong class="text-sm font-bold text-slate-900 block">₲ 220.000</strong></span>
+<a class="px-4 py-2 rounded-xl bg-rose-50 group-hover:bg-primary text-primary group-hover:text-white text-xs font-bold transition-all duration-200 inline-flex items-center gap-1 group-hover:gap-2 active:scale-95 shadow-sm" href="#agendamiento">
+<span>Consultar</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Servicio 4 -->
+<div class="card-kinetic flex flex-col justify-between p-7 rounded-3xl bg-white border border-slate-200/80 hover:border-primary group relative overflow-hidden">
+<div class="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<div class="flex flex-col gap-5">
+<div class="flex items-center justify-between">
+<div class="w-13 h-13 p-3.5 rounded-2xl bg-rose-50 text-primary group-hover:bg-primary group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+<span class="material-symbols-outlined text-[26px]">analytics</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-slate-900 text-rose-300 text-xs font-bold">
+                Próximamente
+              </span>
+</div>
+<div>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-2 group-hover:text-primary transition-colors">Bioimpedancia Médica InBody</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                Evaluación segmental avanzada de composición corporal: masa magra, agua intracelular y grasa visceral con reporte impreso en minutos.
+              </p>
+</div>
+</div>
+<div class="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+<span class="text-xs text-slate-500 font-medium">Lanzamiento Abril 2025</span>
+<span class="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg">Sala Diagnóstica 2</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Equipo Médico Especializado with Dynamic Filter Buttons and Animated Doctor Cards -->
+<section class="w-full py-20 bg-white" id="medicos">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div class="flex flex-col gap-2 max-w-xl">
+<div class="inline-flex items-center gap-2">
+<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+<span class="text-xs uppercase tracking-widest text-primary font-bold">Cartilla Profesional</span>
+</div>
+<h2 class="font-display text-3xl sm:text-4xl text-slate-950 font-bold tracking-tight">Equipo Médico Especializado</h2>
+<p class="text-sm sm:text-base text-slate-600">Profesionales reconocidos dedicados a brindarte un trato humano, empatía constante y diagnósticos de alta precisión.</p>
+</div>
+<div class="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200 shadow-inner" id="filter-container">
+<span class="text-xs font-semibold text-slate-500 px-3 py-1">Filtro rápido:</span>
+<button class="filter-btn px-4 py-1.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md shadow-primary/30 transition-all duration-300 transform active:scale-95" onclick="setActiveFilter(this)" type="button">Todos</button>
+<button class="filter-btn px-4 py-1.5 rounded-xl text-slate-700 hover:text-primary hover:bg-white text-xs font-semibold transition-all duration-300 transform active:scale-95" onclick="setActiveFilter(this)" type="button">Adultos</button>
+<button class="filter-btn px-4 py-1.5 rounded-xl text-slate-700 hover:text-primary hover:bg-white text-xs font-semibold transition-all duration-300 transform active:scale-95" onclick="setActiveFilter(this)" type="button">Pediatría</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Doctor Card 1 -->
+<div class="flex flex-col rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-2xl hover:border-rose-400 hover:-translate-y-2 transition-all duration-500 group">
+<div class="relative h-64 w-full bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" data-alt="Portrait of Dra. Valeria González, internal medicine specialist in Asunción Paraguay, warm and compassionate physician smiling wearing white coat and stethoscope in a bright clinical office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrnFq3u4l9ipSY03AeRKveFnJp5cieqXHWKhfR2KMu8noRsceBiNBJgwqnjExPCK-nclRkjLzXRpYxGVch6g5_1VKP3bc7vgFunpTnFBlY8v-hNOD5eoW2pnZRXFcC0pgItiMGllDDTXmmJYSL_APl3x8OWb2EiAWFxVJh4S985vdKNbkiUpt8JH18ZFNj2_i5q3rU9aKwhFMe9TrQCv678sasGMokU5z5ZWFVj0Q"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<span class="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-emerald-700 border border-emerald-100 text-xs font-bold flex items-center gap-1.5 shadow-md">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span> Activa hoy
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-5">
+<div class="flex flex-col gap-1.5">
+<span class="text-xs uppercase tracking-wider font-bold text-primary group-hover:tracking-widest transition-all">Medicina Interna</span>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Dra. Valeria González</h3>
+<p class="text-xs text-slate-500 font-medium">Reg. Prof. MSPBS N° 8.420 · Egresada UNA</p>
+<div class="mt-3 flex items-center gap-2 text-slate-600 text-xs font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:bg-rose-50/50 group-hover:border-rose-100 transition-colors">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
+<span>Lunes a Viernes · Consultorio 4</span>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-slate-400 font-medium block">Consulta presencial</span>
+<span class="text-base font-extrabold text-slate-950">₲ 200.000</span>
+</div>
+<a class="px-4 py-2.5 rounded-xl bg-slate-900 group-hover:bg-primary text-white text-xs font-bold transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary/30 active:scale-95" href="#agendamiento">
+                Agendar
+              </a>
+</div>
+</div>
+</div>
+<!-- Doctor Card 2 -->
+<div class="flex flex-col rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-2xl hover:border-rose-400 hover:-translate-y-2 transition-all duration-500 group">
+<div class="relative h-64 w-full bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" data-alt="Portrait of Dr. Rodrigo Benítez, Paraguayan clinical cardiologist in modern Asunción medical clinic, friendly, professional, wearing a white medical lab coat in clean hospital environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_XTPsawzRiAGSR_xMbMtEBM8TdG5futvLFfkDdDSlnjNMqo2yOUtN8Isn2HYLo-gcGzcj-ufTG-Rd38lJWNdeg-qdT2VjtzkB-58OH-szGp4VJES8oWBNaANUr6jAzmQe9B7ocuU5Jj9pT85FvjODNcX4PCVII9AeMq-uTFsTAendtWTeSRIW8oG8ZDjFg6yZo1X7gfLzzTNoDVD2uGDbVxANylP-wtdjLA_SWvo"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<span class="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-slate-700 border border-slate-200 text-xs font-bold shadow-md">
+              Turnos mañana
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-5">
+<div class="flex flex-col gap-1.5">
+<span class="text-xs uppercase tracking-wider font-bold text-primary group-hover:tracking-widest transition-all">Cardiología Clínica</span>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Dr. Rodrigo Benítez</h3>
+<p class="text-xs text-slate-500 font-medium">Reg. Prof. MSPBS N° 6.195 · Electrocardiograma</p>
+<div class="mt-3 flex items-center gap-2 text-slate-600 text-xs font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:bg-rose-50/50 group-hover:border-rose-100 transition-colors">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
+<span>Martes y Jueves · Consultorio 2</span>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-slate-400 font-medium block">Consulta + ECG</span>
+<span class="text-base font-extrabold text-slate-950">₲ 250.000</span>
+</div>
+<a class="px-4 py-2.5 rounded-xl bg-slate-900 group-hover:bg-primary text-white text-xs font-bold transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary/30 active:scale-95" href="#agendamiento">
+                Agendar
+              </a>
+</div>
+</div>
+</div>
+<!-- Doctor Card 3 -->
+<div class="flex flex-col rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-2xl hover:border-rose-400 hover:-translate-y-2 transition-all duration-500 group">
+<div class="relative h-64 w-full bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" data-alt="Portrait of Dra. Camila Ortiz, pediatrician in Asunción Paraguay, friendly and caring smiling female doctor with colorful stethoscope in bright pediatric clinic setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlRJifhIgrf5DR2hzXu-JzMyM2yxY4UT1q-4BbaWiQqSBB83HtUc8ldxQNIoCrrBnOriLxBLDHByvdJ4bNgKlq_xvqx6U4W68bkUuFOn8lSkOIsZDlG7-UMAHPYKvRy5FlRIgR8oF6IOzMXAQ5vo3GhrmDDJu4hvSuSYGNqQRBAetpZLrAy9tFLAajUTdc5pQJvuGWxDc0tEu2q2KgXz34mJrFIXyJKuCOg8tERH8"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<span class="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-emerald-700 border border-emerald-100 text-xs font-bold flex items-center gap-1.5 shadow-md">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span> Activa hoy
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-5">
+<div class="flex flex-col gap-1.5">
+<span class="text-xs uppercase tracking-wider font-bold text-primary group-hover:tracking-widest transition-all">Pediatría &amp; Neonatología</span>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Dra. Camila Ortiz</h3>
+<p class="text-xs text-slate-500 font-medium">Reg. Prof. MSPBS N° 9.832 · Control de Crecimiento</p>
+<div class="mt-3 flex items-center gap-2 text-slate-600 text-xs font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:bg-rose-50/50 group-hover:border-rose-100 transition-colors">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
+<span>Lun, Mié y Vie · Consultorio 6</span>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-slate-400 font-medium block">Control pediátrico</span>
+<span class="text-base font-extrabold text-slate-950">₲ 190.000</span>
+</div>
+<a class="px-4 py-2.5 rounded-xl bg-slate-900 group-hover:bg-primary text-white text-xs font-bold transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary/30 active:scale-95" href="#agendamiento">
+                Agendar
+              </a>
+</div>
+</div>
+</div>
+<!-- Doctor Card 4 -->
+<div class="flex flex-col rounded-3xl bg-white border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-2xl hover:border-rose-400 hover:-translate-y-2 transition-all duration-500 group">
+<div class="relative h-64 w-full bg-slate-100 overflow-hidden">
+<img class="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" data-alt="Portrait of Dr. Marcelo Duarte, clinical nutritionist and metabolic health physician in Paraguay, gentle confident expression, modern clinic background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz3oA_giEtnusl_g4xEK6vfKoi5d6rnfZ84is9LyE1dPr4km97mLQMbBjWc36KLHDH70rruBCv6LEajww91zj2MxQgyoxiFEZtAAXa5fVctWR0CiMWmTJj8d1ZDfbzb53eVxEoLPxm2Lj0TIqWlakaOj93LnbkrlfJ06PzXyrqHDYwg5GOQUCQvEe-ooojvy25IisraJJMcfdMC_VKO46FkKuAwuQYHOdB5pcckQ8"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+<span class="absolute top-3 right-3 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md text-slate-700 border border-slate-200 text-xs font-bold shadow-md">
+              Presencial / Virtual
+            </span>
+</div>
+<div class="p-6 flex flex-col flex-1 justify-between gap-5">
+<div class="flex flex-col gap-1.5">
+<span class="text-xs uppercase tracking-wider font-bold text-primary group-hover:tracking-widest transition-all">Nutrición &amp; Metabolismo</span>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Dr. Marcelo Duarte</h3>
+<p class="text-xs text-slate-500 font-medium">Reg. Prof. MSPBS N° 7.310 · Salud Integral</p>
+<div class="mt-3 flex items-center gap-2 text-slate-600 text-xs font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100 group-hover:bg-rose-50/50 group-hover:border-rose-100 transition-colors">
+<span class="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
+<span>Miércoles y Sábados · Consultorio 1</span>
+</div>
+</div>
+<div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-slate-400 font-medium block">Plan nutricional</span>
+<span class="text-base font-extrabold text-slate-950">₲ 210.000</span>
+</div>
+<a class="px-4 py-2.5 rounded-xl bg-slate-900 group-hover:bg-primary text-white text-xs font-bold transition-all duration-300 shadow-sm group-hover:shadow-lg group-hover:shadow-primary/30 active:scale-95" href="#agendamiento">
+                Agendar
+              </a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Circuito Clínico (Interactive Animated Timeline with Pulse Beam) -->
+<section class="w-full py-20 bg-rose-50/50 border-y border-rose-100/70 relative overflow-hidden" id="como-funciona">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="text-center max-w-2xl mx-auto mb-16 flex flex-col gap-3">
+<div class="inline-flex items-center justify-center gap-2">
+<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+<span class="text-xs uppercase tracking-widest text-primary font-bold">Experiencia Sin Fricción</span>
+</div>
+<h2 class="font-display text-3xl sm:text-4xl text-slate-950 font-bold tracking-tight">Tu atención médica, paso a paso</h2>
+<p class="text-sm sm:text-base text-slate-600">Diseñamos un circuito clínico optimizado para que no pierdas tiempo en salas de espera y recibas atención integral y oportuna.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+<!-- Animated Connecting Beam -->
+<div class="hidden md:block absolute top-12 left-1/6 right-1/6 h-1 bg-rose-200/80 -z-0 rounded-full overflow-hidden">
+<div class="h-full w-32 bg-gradient-to-r from-transparent via-primary to-transparent beam-traveler"></div>
+</div>
+<!-- Paso 1 -->
+<div class="flex flex-col items-center text-center p-8 rounded-3xl bg-white border border-rose-100/90 relative z-10 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-rose-500 text-white flex items-center justify-center font-display text-2xl font-black mb-6 shadow-lg shadow-primary/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+            1
+          </div>
+<span class="text-xs uppercase font-bold text-primary mb-1 tracking-wider group-hover:tracking-widest transition-all">Paso inicial</span>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-3 group-hover:text-primary transition-colors">Agendá tu cita</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            Elegí el especialista, fecha y modalidad (presencial o telemedicina) desde la web, por WhatsApp o directamente en nuestra App oficial.
+          </p>
+<div class="mt-6 pt-4 w-full flex items-center justify-center gap-2 text-slate-700 text-xs font-semibold bg-rose-50/70 py-2.5 rounded-xl border border-rose-100/70 group-hover:bg-rose-100/70 transition-colors">
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform">check_circle</span>
+<span>Confirmación instantánea</span>
+</div>
+</div>
+<!-- Paso 2 -->
+<div class="flex flex-col items-center text-center p-8 rounded-3xl bg-white border border-rose-100/90 relative z-10 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+<div class="w-16 h-16 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-display text-2xl font-black mb-6 shadow-lg shadow-slate-900/20 group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300">
+            2
+          </div>
+<span class="text-xs uppercase font-bold text-slate-900 mb-1 tracking-wider group-hover:tracking-widest transition-all">Pre-consulta de enfermería</span>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-3 group-hover:text-primary transition-colors">Triaje y signos vitales</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            Al llegar al sanatorio, el equipo de enfermería toma tu presión arterial, glucemia, peso y temperatura, sincronizándolos al legajo médico digital.
+          </p>
+<div class="mt-6 pt-4 w-full flex items-center justify-center gap-2 text-slate-700 text-xs font-semibold bg-rose-50/70 py-2.5 rounded-xl border border-rose-100/70 group-hover:bg-rose-100/70 transition-colors">
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform">check_circle</span>
+<span>Sin demoras: sólo 5 minutos</span>
+</div>
+</div>
+<!-- Paso 3 -->
+<div class="flex flex-col items-center text-center p-8 rounded-3xl bg-white border border-rose-100/90 relative z-10 shadow-sm hover:shadow-xl hover:-translate-y-2 transition-all duration-500 group">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-dark to-primary text-white flex items-center justify-center font-display text-2xl font-black mb-6 shadow-lg shadow-primary/30 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+            3
+          </div>
+<span class="text-xs uppercase font-bold text-primary mb-1 tracking-wider group-hover:tracking-widest transition-all">Atención &amp; Diagnóstico</span>
+<h3 class="font-display text-xl text-slate-950 font-bold mb-3 group-hover:text-primary transition-colors">Consulta y receta digital</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            El médico te evalúa con tiempo, registra el diagnóstico clínico y emite la receta digital con código de barra lista para canjear en farmacias aliadas.
+          </p>
+<div class="mt-6 pt-4 w-full flex items-center justify-center gap-2 text-slate-700 text-xs font-semibold bg-rose-50/70 py-2.5 rounded-xl border border-rose-100/70 group-hover:bg-rose-100/70 transition-colors">
+<span class="material-symbols-outlined text-[18px] text-primary group-hover:scale-110 transition-transform">check_circle</span>
+<span>Receta enviada por WhatsApp</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Interactive Scheduling Preview / Quick Booking Section with Shimmer Accents -->
+<section class="w-full py-20 bg-white" id="agendamiento">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="bg-gradient-to-br from-slate-950 to-slate-900 rounded-[2.5rem] p-8 lg:p-14 text-white shadow-2xl relative overflow-hidden border border-slate-800">
+<!-- Shimmer Ambient Light -->
+<div class="absolute inset-0 shimmer-bg pointer-events-none opacity-40"></div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative z-10">
+<div class="lg:col-span-5 flex flex-col gap-5">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold w-fit">
+<span class="material-symbols-outlined text-[16px] animate-pulse">bolt</span>
+<span>Reserva Instantánea</span>
+</div>
+<h2 class="font-display text-3xl sm:text-4xl text-white font-bold tracking-tight leading-tight">Agendá tu turno médico en segundos</h2>
+<p class="text-sm text-slate-300 leading-relaxed">
+              Seleccioná especialidad, fecha preferida y confirmá con tu Cédula de Identidad o número de WhatsApp sin trámites engorrosos.
+            </p>
+<div class="pt-3 flex flex-col gap-3">
+<div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:border-rose-400/40 hover:bg-white/10 transition-all duration-300 cursor-default">
+<span class="material-symbols-outlined text-rose-400 text-[24px]">health_and_safety</span>
+<span class="text-xs text-slate-200">Convenios directos con <strong class="text-white font-semibold">Santa Clara, Asismed, SPS, Migone y Panal</strong>.</span>
+</div>
+<div class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:border-rose-400/40 hover:bg-white/10 transition-all duration-300 cursor-default">
+<span class="material-symbols-outlined text-rose-400 text-[24px]">payments</span>
+<span class="text-xs text-slate-200">Pago particular en Guaraníes (₲) vía Transferencia SIPAP, Tarjeta o Efectivo en recepción.</span>
+</div>
+</div>
+</div>
+<!-- Interactive Booking Widget with Spring Chip Selector -->
+<div class="lg:col-span-7 bg-white text-slate-900 p-7 sm:p-9 rounded-3xl shadow-xl flex flex-col gap-5 border border-slate-100">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="book-specialty">Especialidad</label>
+<select class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="book-specialty">
+<option>Clínica Médica / Medicina Interna</option>
+<option>Cardiología Clínica</option>
+<option>Pediatría y Control Infantil</option>
+<option>Nutrición y Metabolismo</option>
+<option>Ginecología y Obstetricia</option>
+<option>Traumatología General</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="book-mode">Modalidad</label>
+<select class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="book-mode">
+<option>Presencial (Sede Asunción)</option>
+<option>Telemedicina (Videollamada)</option>
+</select>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<span class="text-xs uppercase font-bold text-slate-700 tracking-wider">Horarios sugeridos para hoy y mañana:</span>
+<div class="grid grid-cols-3 sm:grid-cols-6 gap-2" id="slot-picker">
+<button class="py-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-primary text-slate-800 text-xs font-semibold transition-all transform active:scale-90" type="button">08:30</button>
+<button class="py-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-primary text-slate-800 text-xs font-semibold transition-all transform active:scale-90" type="button">09:15</button>
+<button class="py-2.5 rounded-xl bg-primary text-white border border-primary text-xs font-bold shadow-md shadow-primary/30 transition-all transform active:scale-90 scale-105" type="button">11:00</button>
+<button class="py-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-primary text-slate-800 text-xs font-semibold transition-all transform active:scale-90" type="button">14:30</button>
+<button class="py-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-primary text-slate-800 text-xs font-semibold transition-all transform active:scale-90" type="button">16:00</button>
+<button class="py-2.5 rounded-xl bg-slate-100 text-slate-400 text-xs line-through cursor-not-allowed border border-slate-100" disabled="" type="button">17:45</button>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="patient-name">Nombre y Apellido</label>
+<input class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="patient-name" placeholder="Ej: María José Bogado" type="text"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="patient-ci">N° Cédula o Celular WhatsApp</label>
+<input class="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="patient-ci" placeholder="Ej: 4.120.350 / 0981..." type="text"/>
+</div>
+</div>
+<button class="w-full py-4 rounded-xl bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary-dark text-white font-bold text-sm tracking-wide transition-all duration-300 crimson-glow flex items-center justify-center gap-2 mt-2 hover:-translate-y-0.5 active:scale-[0.98]" onclick="alert('¡Turno agendado con éxito! Recibirás los detalles de tu consulta por WhatsApp al instante.')" type="button">
+<span class="material-symbols-outlined text-[20px] animate-pulse">check_circle</span>
+<span>Confirmar turno médico</span>
+</button>
+<p class="text-xs text-center text-slate-500 font-medium">Cancelación o reprogramación gratuita hasta 2 horas antes de la cita.</p>
+</div>
+</div>
+<!-- Dynamic background auras with pulsing glow -->
+<div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow"></div>
+<div class="absolute -bottom-24 -left-24 w-96 h-96 bg-rose-600/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" style="animation-delay: 2.5s;"></div>
+</div>
+</div>
+</section>
+<!-- Descargá la App para Pacientes with Floating Phone Mockup -->
+<section class="w-full py-20 bg-slate-900 text-white relative overflow-hidden" id="descarga-la-app">
+<div class="max-w-7xl mx-auto px-6 lg:px-12 relative z-10">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+<div class="lg:col-span-7 flex flex-col gap-6">
+<span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 w-fit text-xs font-bold uppercase tracking-wider">
+<span class="material-symbols-outlined text-[16px] animate-bounce">smartphone</span> Sanatorio Serena Móvil
+            </span>
+<h2 class="font-display text-4xl sm:text-5xl font-black leading-tight tracking-tight">
+              Llevá tu salud en el bolsillo: App Sanatorio Serena
+            </h2>
+<p class="text-base text-slate-300 max-w-xl leading-relaxed">
+              Gestioná tus consultas y las de tus seres queridos con total comodidad. Acceso directo a tu historial médico, recetas activas y resultados de laboratorio.
+            </p>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+<div class="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 hover:border-rose-400/40 hover:-translate-y-1 transition-all duration-300 group cursor-default">
+<div class="w-10 h-10 rounded-xl bg-primary/20 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-[22px]">prescriptions</span>
+</div>
+<span class="text-xs font-semibold text-slate-200">Consultá tus recetas</span>
+</div>
+<div class="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 hover:border-rose-400/40 hover:-translate-y-1 transition-all duration-300 group cursor-default">
+<div class="w-10 h-10 rounded-xl bg-primary/20 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-[22px]">event_repeat</span>
+</div>
+<span class="text-xs font-semibold text-slate-200">Reprogramá tus citas</span>
+</div>
+<div class="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/10 hover:border-rose-400/40 hover:-translate-y-1 transition-all duration-300 group cursor-default">
+<div class="w-10 h-10 rounded-xl bg-primary/20 text-rose-400 flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-symbols-outlined text-[22px]">vital_signs</span>
+</div>
+<span class="text-xs font-semibold text-slate-200">Signos vitales</span>
+</div>
+</div>
+<!-- Download Badges with Press Animations -->
+<div class="flex flex-wrap items-center gap-4 pt-4">
+<a class="inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-white text-slate-950 hover:bg-rose-50 transition-all font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-[26px] text-primary group-hover:scale-110 transition-transform">shop</span>
+<div class="flex flex-col text-left leading-none">
+<span class="text-[11px] font-medium text-slate-500">Disponible en</span>
+<span class="text-sm font-black text-slate-900 mt-0.5">Google Play</span>
+</div>
+</a>
+<a class="inline-flex items-center gap-3 px-6 py-3.5 rounded-2xl bg-slate-950 border border-slate-700 hover:border-rose-400 transition-all font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 group" href="#">
+<span class="material-symbols-outlined text-[26px] text-white group-hover:scale-110 transition-transform">phone_iphone</span>
+<div class="flex flex-col text-left leading-none">
+<span class="text-[11px] font-medium text-slate-400">Descargar en</span>
+<span class="text-sm font-black text-white mt-0.5">App Store</span>
+</div>
+</a>
+</div>
+</div>
+<!-- App Mockup Preview (CSS Phone Frame with Subtle Floating Motion) -->
+<div class="lg:col-span-5 flex justify-center lg:justify-end">
+<div class="w-72 bg-white text-slate-900 rounded-[44px] p-5 shadow-2xl border-4 border-slate-800 shadow-rose-950/60 relative animate-float hover:scale-105 transition-transform duration-500 cursor-pointer">
+<!-- Phone Speaker/Camera Notch -->
+<div class="w-24 h-4 bg-slate-900 rounded-full mx-auto mb-4"></div>
+<!-- Mock App Screen -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">MB</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold leading-none text-slate-900">María Benítez</span>
+<span class="text-[10px] text-slate-400">CI 4.120.350</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[18px] text-slate-400 hover:text-primary transition-colors">notifications</span>
+</div>
+<!-- Next Appointment Card in App -->
+<div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-100 flex flex-col gap-2 hover:bg-rose-100/50 transition-colors">
+<span class="text-[10px] uppercase font-bold text-primary tracking-wider">Próxima Consulta</span>
+<div class="flex items-start justify-between">
+<div>
+<p class="text-xs font-bold text-slate-900">Dra. Valeria González</p>
+<p class="text-[11px] text-slate-500">Clínica Médica · Sede Asunción</p>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Confirmada</span>
+</div>
+<div class="flex items-center justify-between text-[11px] font-bold text-primary pt-1 border-t border-rose-200/60">
+<span>Hoy · 16:30 hs</span>
+<span>Sala 4</span>
+</div>
+</div>
+<!-- Vitals Preview -->
+<div class="grid grid-cols-2 gap-2">
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col hover:border-rose-200 transition-colors">
+<span class="text-[10px] text-slate-400">Presión Arterial</span>
+<span class="text-xs font-bold text-slate-900">118/76 mmHg</span>
+</div>
+<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col hover:border-rose-200 transition-colors">
+<span class="text-[10px] text-slate-400">Glucemia basal</span>
+<span class="text-xs font-bold text-slate-900">92 mg/dL</span>
+</div>
+</div>
+<!-- Digital Prescriptions -->
+<div class="p-3 rounded-2xl bg-slate-900 text-white flex items-center justify-between hover:bg-slate-800 transition-colors">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-rose-400 text-[20px]">receipt_long</span>
+<div class="flex flex-col">
+<span class="text-xs font-bold leading-tight">2 Recetas Activas</span>
+<span class="text-[10px] text-slate-400">Válidas en farmacias</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-rose-400">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Ambient decorative glow -->
+<div class="absolute -right-20 -bottom-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow"></div>
+<div class="absolute -left-20 -top-20 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none animate-pulse-glow" style="animation-delay: 1.5s;"></div>
+</section>
+<!-- Contacto y Ubicación (Paraguay) -->
+<section class="w-full py-20 bg-slate-50" id="contacto">
+<div class="max-w-7xl mx-auto px-6 lg:px-12">
+<div class="flex flex-col gap-2 mb-12">
+<div class="inline-flex items-center gap-2">
+<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+<span class="text-xs uppercase tracking-widest text-primary font-bold">Ubicación y Atención</span>
+</div>
+<h2 class="font-display text-3xl sm:text-4xl text-slate-950 font-bold tracking-tight">Estamos cerca de vos en Asunción</h2>
+<p class="text-sm sm:text-base text-slate-600">Acceso cómodo sobre una de las avenidas principales con amplio estacionamiento propio y seguridad.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Info Cards (7 cols) -->
+<div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3 card-kinetic group">
+<div class="w-11 h-11 rounded-2xl bg-rose-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[22px]">location_on</span>
+</div>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Dirección Sanatorial</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Av. Mariscal López 2840 c/ Denis Roa<br/>
+              Barrio Herrera, Asunción - Paraguay
+            </p>
+<span class="text-xs text-primary font-bold mt-auto bg-rose-50/70 p-2 rounded-xl">Estacionamiento techado gratuito</span>
+</div>
+<div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3 card-kinetic group">
+<div class="w-11 h-11 rounded-2xl bg-rose-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[22px]">chat</span>
+</div>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">WhatsApp Directo</h3>
+<p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Atención inmediata de recepción y secretaría para agendamientos y consultas arancelarias.
+            </p>
+<a class="text-sm font-extrabold text-primary hover:text-primary-hover inline-flex items-center gap-1.5 mt-auto group-hover:translate-x-1 transition-transform" href="https://wa.me/595981740000" rel="noopener noreferrer" target="_blank">
+<span>+595 981 740 000</span>
+<span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+</div>
+<div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3 card-kinetic group">
+<div class="w-11 h-11 rounded-2xl bg-rose-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[22px]">schedule</span>
+</div>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Horarios de Atención</h3>
+<div class="text-xs sm:text-sm text-slate-600 flex flex-col gap-1.5">
+<div><strong class="text-slate-900">Lunes a Viernes:</strong> 07:00 a 20:00 hs</div>
+<div><strong class="text-slate-900">Sábados:</strong> 07:00 a 13:00 hs</div>
+<div><strong class="text-slate-900">Urgencias diurnas:</strong> Guardia activa</div>
+</div>
+</div>
+<div class="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm flex flex-col gap-3 card-kinetic group">
+<div class="w-11 h-11 rounded-2xl bg-rose-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all">
+<span class="material-symbols-outlined text-[22px]">account_balance_wallet</span>
+</div>
+<h3 class="font-display text-lg text-slate-950 font-bold group-hover:text-primary transition-colors">Cobertura &amp; Pagos</h3>
+<p class="text-xs text-slate-500 leading-relaxed">
+              Prepagas con convenio: Santa Clara, Asismed, SPS, Migone, Panal, Medicina Prepaga del Este. Pagos particulares en Guaraníes (₲).
+            </p>
+<div class="flex items-center gap-2 mt-auto text-xs text-slate-700 font-bold bg-slate-50 p-2 rounded-xl group-hover:bg-rose-50/50 transition-colors">
+<span class="material-symbols-outlined text-[16px] text-primary">credit_card</span>
+<span>Aceptamos todas las tarjetas</span>
+</div>
+</div>
+</div>
+<!-- Location Map Card (5 cols) -->
+<div class="lg:col-span-5 flex flex-col">
+<div class="w-full h-full min-h-[350px] rounded-3xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 relative bg-slate-100 flex flex-col justify-end p-6 border border-slate-200 group">
+<div class="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-location="Av. Mariscal Lopez 2840, Asuncion, Paraguay" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCipGNA32j2quwvda9fP4HXS8iRfEMUfU15a4j3gu6LmeC2FHWkI0r7eClS6KWKx0hTl6ca1uv4o8bnw8C5frj1buQ-FvgKQNov41uT5EF-byr5lVvxflJ2uczK9HWUZ9fv4Le8s6SK_yGgC7KYtwd5l3TbIncJH1JdJ_FaE6_xKIcFuuQskkMpsQVpJedZXnEHUTLU69PsWRqCNDCn9bcyYaLwGFOIT0L5zTBnSpg')"></div>
+<!-- Map Overlay Card with Hover Lift -->
+<div class="relative z-10 p-5 rounded-2xl bg-white/95 backdrop-blur-md shadow-xl border border-rose-100 flex flex-col gap-3 group-hover:-translate-y-1 transition-transform">
+<div class="flex items-start justify-between">
+<div>
+<span class="text-sm font-bold text-slate-950">Sanatorio Serena Central</span>
+<p class="text-xs text-slate-500">Av. Mcal. López c/ Denis Roa, Asunción</p>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> Abierto
+</span>
+</div>
+<a class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-primary text-white text-xs font-bold text-center transition-all duration-200 flex items-center justify-center gap-2 shadow-sm active:scale-95" href="https://maps.google.com/?q=Av.+Mariscal+Lopez+Asuncion" rel="noopener noreferrer" target="_blank">
+<span class="material-symbols-outlined text-[18px]">directions</span>
+<span>Cómo llegar con Google Maps</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Modal: Acceso al Sistema Clínico (Staff Portal) with Zoom-in Animation -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md transition-opacity duration-300" id="staff-login-modal">
+<div class="relative w-full max-w-md rounded-[2rem] bg-white p-8 shadow-2xl border border-rose-100 transform transition-transform duration-300 scale-100">
+<!-- Close Button -->
+<button class="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-primary text-slate-500 flex items-center justify-center transition-all hover:rotate-90" onclick="document.getElementById('staff-login-modal').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+<div class="flex flex-col gap-2 mb-6">
+<div class="w-12 h-12 rounded-2xl bg-rose-50 text-primary flex items-center justify-center mb-1">
+<span class="material-symbols-outlined text-[26px]">badge</span>
+</div>
+<h3 class="font-display text-2xl text-slate-950 font-bold">Acceso al Sistema Clínico</h3>
+<p class="text-xs text-slate-500">Portal exclusivo para Médicos, Enfermería, Secretaría y Facturación de Sanatorio Serena.</p>
+</div>
+<form class="flex flex-col gap-4" id="form-staff-login">
+<div class="flex flex-col gap-1.5">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="staff-user">Cédula o Usuario Institucional</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined text-[20px] text-slate-400 absolute left-3.5 pointer-events-none">person</span>
+<input class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="staff-user" placeholder="Ej: vgonzalez@serena.com.py" required="" type="text"/>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<label class="text-xs uppercase font-bold text-slate-700 tracking-wider" for="staff-pass">Contraseña</label>
+<a class="text-xs font-bold text-primary hover:underline" href="#">¿Olvidaste tu clave?</a>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined text-[20px] text-slate-400 absolute left-3.5 pointer-events-none">lock</span>
+<input class="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all" id="staff-pass" placeholder="••••••••••••" required="" type="password"/>
+</div>
+</div>
+<div class="flex items-center gap-2 pt-1">
+<input class="w-4 h-4 rounded text-primary focus:ring-primary border-slate-300" id="remember-device" type="checkbox"/>
+<label class="text-xs text-slate-600 font-medium" for="remember-device">Recordar sesión en este equipo clínico</label>
+</div>
+<button class="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary-dark text-white font-bold text-sm tracking-wide transition-all crimson-glow mt-2 flex items-center justify-center gap-2 active:scale-95" type="submit">
+<span class="material-symbols-outlined text-[20px]">login</span>
+<span>Iniciar sesión en el sistema</span>
+</button>
+</form>
+<!-- Patient redirect notice -->
+<div class="mt-6 pt-5 bg-rose-50/60 border-t border-rose-100 -mx-8 -mb-8 p-6 rounded-b-[2rem] flex flex-col gap-1 text-center">
+<span class="text-xs font-bold text-slate-900">¿Sos paciente de Serena?</span>
+<p class="text-xs text-slate-600">
+          Podés gestionar tus turnos, recetas y estudios directamente desde nuestro <a class="text-primary font-bold hover:underline" href="portal.html" onclick="document.getElementById('staff-login-modal').classList.add('hidden')">Portal del Paciente</a>.
+        </p>
+</div>
+</div>
+</div>
+<script src="js/config.js"></script>
+<script>
+    document.getElementById('form-staff-login').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const email = document.getElementById('staff-user').value.trim();
+      const password = document.getElementById('staff-pass').value;
+      if (!email || !password) return;
+      if (window.sb) {
+        const { error } = await window.sb.auth.signInWithPassword({ email, password });
+        if (error) { alert('Usuario o contraseña incorrectos.'); return; }
+        window.location.href = 'dashboard.html';
+      } else {
+        sessionStorage.setItem('demo_usuario', email);
+        window.location.href = 'dashboard.html';
+      }
+    });
+</script>
+<script>
+    // Close modal with ESC key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        const modal = document.getElementById('staff-login-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+          modal.classList.add('hidden');
+        }
+      }
+    });
 
-  <section class="hero">
-    <div>
-      <h1>Organizá tu clínica:<br />agenda, historias clínicas <span>y mucho más</span></h1>
-      <p>
-        Sistema de gestión para clínicas y consultorios en Paraguay. Agendas de médicos,
-        prontuario del paciente, emisión de recetas y certificados médicos, y notificaciones
-        directas al paciente. Todo en un solo lugar.
-      </p>
-      <div class="hero-acciones">
-        <a href="login.html" class="btn btn-primario">Ingresar al sistema</a>
-        <a href="#modulos" class="btn btn-contorno">Conocer los módulos</a>
-      </div>
-    </div>
-    <div class="hero-visual" aria-label="Vista previa de la agenda del día">
-      <div class="fila"><b>08:00 — María González</b><span class="badge badge-verde">Confirmado</span></div>
-      <div class="fila"><b>08:30 — Juan Pérez</b><span class="badge badge-azul">Sala de espera</span></div>
-      <div class="fila"><b>09:00 — Ana Rojas</b><span class="badge badge-amarillo">Pendiente</span></div>
-      <div class="fila"><b>09:30 — Carlos López</b><span class="badge badge-verde">Confirmado</span></div>
-      <div class="fila"><b>10:00 — Luisa Cáceres</b><span class="badge badge-azul">Sala de espera</span></div>
-    </div>
-  </section>
+    // Time slot picker interactive micro-interaction
+    const slotPicker = document.getElementById('slot-picker');
+    if (slotPicker) {
+      const buttons = slotPicker.querySelectorAll('button:not([disabled])');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => {
+            b.classList.remove('bg-primary', 'text-white', 'font-bold', 'shadow-md', 'shadow-primary/30', 'scale-105');
+            b.classList.add('bg-slate-50', 'text-slate-800', 'font-semibold', 'border-slate-200');
+          });
+          btn.classList.remove('bg-slate-50', 'text-slate-800', 'font-semibold', 'border-slate-200');
+          btn.classList.add('bg-primary', 'text-white', 'font-bold', 'shadow-md', 'shadow-primary/30', 'scale-105');
+        });
+      });
+    }
 
-  <section class="seccion" id="modulos">
-    <h2>Módulos del sistema</h2>
-    <p class="sub">Todo lo que tu consultorio necesita, integrado.</p>
-    <div class="grid-modulos">
-      <div class="modulo">
-        <div class="icono">📅</div>
-        <h3>Agendas médicas</h3>
-        <p>Turnos por médico y especialidad, horarios, confirmaciones y sobreturnos. Vista diaria y semanal.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">📋</div>
-        <h3>Historia clínica y prontuario</h3>
-        <p>Ficha completa del paciente: consultas, antecedentes, diagnósticos y tratamientos, siempre disponible.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">💊</div>
-        <h3>Recetas digitales</h3>
-        <p>Emisión de recetas desde la consulta, con datos del médico, registro profesional y lista de medicamentos.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">📄</div>
-        <h3>Certificados médicos</h3>
-        <p>Certificados de reposo y de salud listos para imprimir, con fecha, duración y firma del profesional.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">🔔</div>
-        <h3>Notificaciones al paciente</h3>
-        <p>Recordatorios de turnos, resultados e informaciones del médico, enviadas directamente al paciente.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">💰</div>
-        <h3>Facturación y finanzas</h3>
-        <p>Emisión de facturas, control de pagos recibidos y pendientes, ingresos y saldo mensual.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">✅</div>
-        <h3>Tareas y avisos internos</h3>
-        <p>Organización del trabajo del equipo: tareas con responsable y vencimiento, avisos internos y recordatorios.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">📊</div>
-        <h3>Reportes</h3>
-        <p>Indicadores de desempeño: atendimientos, confirmaciones, cancelaciones e ingresos del mes.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">👤</div>
-        <h3>Portal del paciente</h3>
-        <p>Acceso exclusivo para pacientes: consulta sus turnos, facturas y mensajes de la clínica desde el celular.</p>
-      </div>
-      <div class="modulo">
-        <div class="icono">👥</div>
-        <h3>Roles y permisos</h3>
-        <p>Cada usuario accede según su rol: médico, recepcionista, enfermería o administrador.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="seccion roles" id="roles">
-    <h2>Un dashboard para cada rol</h2>
-    <p class="sub">Al ingresar, cada usuario ve lo que necesita para su trabajo.</p>
-    <div class="grid-roles">
-      <div class="tarjeta-rol">
-        <h3>🩺 Médico</h3>
-        <ul>
-          <li>Agenda del día</li>
-          <li>Historia clínica del paciente</li>
-          <li>Recetas y certificados</li>
-          <li>Mensajes a pacientes</li>
-        </ul>
-      </div>
-      <div class="tarjeta-rol">
-        <h3>☎️ Recepcionista</h3>
-        <ul>
-          <li>Registro de pacientes</li>
-          <li>Gestión de turnos</li>
-          <li>Confirmaciones y avisos</li>
-          <li>Sala de espera</li>
-        </ul>
-      </div>
-      <div class="tarjeta-rol">
-        <h3>💉 Enfermería</h3>
-        <ul>
-          <li>Signos vitales</li>
-          <li>Preparación de pacientes</li>
-          <li>Aplicaciones y controles</li>
-          <li>Agenda compartida</li>
-        </ul>
-      </div>
-      <div class="tarjeta-rol">
-        <h3>⚙️ Administrador</h3>
-        <ul>
-          <li>Usuarios y roles</li>
-          <li>Reportes y estadísticas</li>
-          <li>Configuración de la clínica</li>
-          <li>Acceso a todos los módulos</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    CliniSalud — Sistema de gestión clínica · Paraguay · © 2025
-  </footer>
-</body>
-</html>
+    // Filter pill interaction
+    function setActiveFilter(activeBtn) {
+      const filterContainer = document.getElementById('filter-container');
+      if (filterContainer) {
+        const btns = filterContainer.querySelectorAll('.filter-btn');
+        btns.forEach(btn => {
+          btn.classList.remove('bg-primary', 'text-white', 'font-bold', 'shadow-md', 'shadow-primary/30');
+          btn.classList.add('text-slate-700');
+        });
+        activeBtn.classList.remove('text-slate-700');
+        activeBtn.classList.add('bg-primary', 'text-white', 'font-bold', 'shadow-md', 'shadow-primary/30');
+      }
+    }
+  </script>
+</div></main><footer class="w-full bg-slate-950 text-white mt-12 border-t border-slate-800"><div class="max-w-7xl mx-auto px-6 lg:px-12 py-16"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-14"><div class="flex flex-col gap-4"><div class="flex items-center gap-3 group cursor-pointer"><div class="w-9 h-9 rounded-xl bg-primary p-0.5 flex items-center justify-center shadow-md shadow-primary/30 group-hover:scale-105 group-hover:rotate-6 transition-transform"><img alt="Logo Clínica Serena" class="h-5 w-auto object-contain brightness-0 invert" src="https://lh3.googleusercontent.com/aida/ALJJyrCkKAfON8pDE0tTgzRPRerXOLmIfDrKHSEj5iyRGvq9_VOslTNlvbWNqCZa9BRg5oqTNg15sdROvRT26ZraHvn0iWQ0tKWkgjb9NTX9LegO3aoMn521pxKpotjNLFCHSGxlxjxonXpOJxnHIQYSShI85rx8Px_8mfwcoPjw6LBGSY_JRxR_7F0cgfy4idO0MPJ-kASXuCGdQJCnmC7W-YszNli7uav9Lb-awtdkDOIQ"/></div><span class="font-display text-xl text-white font-bold group-hover:text-rose-400 transition-colors">Sanatorio Serena</span></div><p class="text-xs sm:text-sm text-slate-400 leading-relaxed">Excelencia médica con calidez humana en el corazón de Asunción. Atención ambulatoria, internación y guardia 24hs.</p><div><span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-xs font-semibold text-rose-300"><span class="material-symbols-outlined text-[14px]">verified</span> Acreditación MSPBS N° 4589</span></div></div><div class="flex flex-col gap-3"><span class="text-xs uppercase tracking-wider font-bold text-white mb-1">Ubicación y Atención</span><div class="flex items-start gap-2.5 text-slate-400 text-xs"><span class="material-symbols-outlined text-[18px] text-rose-400 shrink-0">location_on</span><span>Av. Mariscal López c/ San Martín, Asunción - Paraguay</span></div><div class="flex items-center gap-2.5 text-slate-400 text-xs"><span class="material-symbols-outlined text-[18px] text-rose-400 shrink-0">schedule</span><span>Guardia médica y urgencias 24 hs</span></div><div class="flex items-center gap-2.5 text-slate-400 text-xs"><span class="material-symbols-outlined text-[18px] text-rose-400 shrink-0">call</span><span>+595 21 600 000 (Central)</span></div></div><div class="flex flex-col gap-3"><span class="text-xs uppercase tracking-wider font-bold text-white mb-1">Contacto Directo</span><p class="text-xs text-slate-400">Agendá tu turno o consultá aranceles de prepagas vía WhatsApp oficial:</p><a class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-primary to-primary-hover text-white font-bold text-xs tracking-wide transition-all crimson-glow w-fit hover:-translate-y-1 hover:shadow-lg active:scale-95" href="https://wa.me/595981123456" rel="noopener noreferrer" target="_blank"><span class="material-symbols-outlined text-[18px] animate-bounce">chat</span><span>+595 981 123456</span></a></div><div class="flex flex-col gap-4"><span class="text-xs uppercase tracking-wider font-bold text-white">Canales Digitales</span><p class="text-xs text-slate-400">Seguinos para novedades, charlas preventivas y cartilla médica actualizada:</p><div class="flex items-center gap-2.5"><a aria-label="Canal Informativo 1" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-primary hover:scale-110 active:scale-95 transition-all" href="#"><span class="material-symbols-outlined text-[18px]">share</span></a><a aria-label="Canal Informativo 2" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-primary hover:scale-110 active:scale-95 transition-all" href="#"><span class="material-symbols-outlined text-[18px]">photo_camera</span></a><a aria-label="Canal Informativo 3" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-primary hover:scale-110 active:scale-95 transition-all" href="#"><span class="material-symbols-outlined text-[18px]">language</span></a></div><div class="flex items-center gap-2 text-xs text-slate-400"><span class="material-symbols-outlined text-rose-400 text-[18px]">health_and_safety</span><span>Convenios con Prepagas e IPS</span></div></div></div><div class="pt-8 border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left"><p class="text-xs text-slate-500">© 2025 Sanatorio Serena. Todos los derechos reservados. Registro MSPBS N° 4589</p><div class="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-400"><a class="hover:text-rose-400 transition-colors" href="#">Aviso de Privacidad</a><span>•</span><a class="hover:text-rose-400 transition-colors" href="#">Términos del Servicio</a><span>•</span><a class="hover:text-rose-400 transition-colors" href="#">Carta de Derechos del Paciente</a></div></div></div></footer></body></html>
