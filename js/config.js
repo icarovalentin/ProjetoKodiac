@@ -18,4 +18,5 @@ const ROLES = {
   RECEPCIONISTA: 'recepcionista',
   ENFERMERIA: 'enfermeria',
   ADMINISTRADOR: 'administrador',
+  PACIENTE: 'paciente',
 };

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es-PY">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal del Paciente — CliniSalud</title>
+  <style>
+    :root {
+      --azul: #0e5aa7;
+      --azul-oscuro: #0a3d73;
+      --celeste: #e8f2fb;
+      --verde: #1a9e6e;
+      --gris: #6b7280;
+      --borde: #e5e7eb;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f4f7fb; color: #1f2937; min-height: 100vh;
+    }
+    header {
+      background: var(--azul-oscuro); color: #fff;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 5%;
+    }
+    .logo { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+    .logo .cruz { background: var(--verde); width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; }
+    .usuario { font-size: .9rem; color: #c7d8ec; }
+    .usuario b { color: #fff; }
+    .usuario button {
+      margin-left: 1rem; background: rgba(255,255,255,.12); color: #fff;
+      border: none; border-radius: 6px; padding: .4rem .8rem; cursor: pointer; font-size: .85rem;
+    }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    h2 { color: var(--azul-oscuro); font-size: 1.15rem; margin: 1.5rem 0 .8rem; }
+    .panel {
+      background: #fff; border-radius: 12px; padding: 1.3rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    th { text-align: left; color: var(--gris); padding: .45rem .6rem; border-bottom: 2px solid var(--borde); }
+    td { padding: .55rem .6rem; border-bottom: 1px solid var(--borde); }
+    .badge { font-size: .75rem; padding: .15rem .6rem; border-radius: 999px; font-weight: 600; }
+    .badge-verde { background: #d9f2e6; color: var(--verde); }
+    .badge-amarillo { background: #fdf3d7; color: #a16207; }
+    .badge-azul { background: var(--celeste); color: var(--azul); }
+    .vacio { color: var(--gris); text-align: center; padding: 1.5rem; }
+    .saludo {
+      background: linear-gradient(135deg, var(--celeste), #f7fbff);
+      border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;
+    }
+    .saludo h1 { color: var(--azul-oscuro); font-size: 1.4rem; }
+    .saludo p { color: var(--gris); margin-top: .3rem; }
+    .aviso-demo {
+      background: #fdf3d7; border: 1px solid #f5d97e; color: #854d0e;
+      padding: .7rem 1rem; border-radius: 8px; font-size: .85rem; margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="cruz">✚</span> CliniSalud — Portal del Paciente</div>
+    <div class="usuario"><b id="nombre-paciente">Paciente</b><button id="btn-salir">Salir</button></div>
+  </header>
+
+  <main>
+    <div class="aviso-demo" id="aviso-demo">
+      Modo demo: se muestran datos de ejemplo. Con Supabase configurado verás tus datos reales.
+    </div>
+    <div class="saludo">
+      <h1 id="saludo">¡Hola!</h1>
+      <p>Bienvenido a tu portal. Acá podés ver tus próximos turnos, tus facturas y los mensajes de tu médico.</p>
+    </div>
+
+    <h2>📅 Mis próximos turnos</h2>
+    <div class="panel" id="mis-turnos"></div>
+
+    <h2>💰 Mis facturas</h2>
+    <div class="panel" id="mis-facturas"></div>
+
+    <h2>🔔 Mensajes de la clínica</h2>
+    <div class="panel" id="mis-mensajes"></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script>
+    const ETIQUETAS_TURNO = {
+      pendiente: ['badge-amarillo', 'Pendiente'],
+      confirmado: ['badge-verde', 'Confirmado'],
+      sala_espera: ['badge-azul', 'Sala de espera'],
+      atendido: ['badge-azul', 'Atendido'],
+      cancelado: ['badge-amarillo', 'Cancelado'],
+      ausente: ['badge-amarillo', 'Ausente'],
+    };
+
+    function esc(t) {
+      return String(t ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    function badge(mapa, estado) {
+      const [clase, texto] = mapa[estado] || ['badge-amarillo', estado];
+      return `<span class="badge ${clase}">${esc(texto)}</span>`;
+    }
+
+    function formatearFecha(f) {
+      if (!f) return '—';
+      const d = new Date(f.length <= 10 ? f + 'T12:00:00' : f);
+      return d.toLocaleDateString('es-PY', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    async function iniciar() {
+      document.getElementById('aviso-demo').style.display = window.sb ? 'none' : 'block';
+      let miNombre = 'Paciente';
+      let miId = null;
+
+      if (window.sb) {
+        const { data: { user } } = await window.sb.auth.getUser();
+        if (!user) { window.location.href = 'login.html'; return; }
+        const { data: perfil } = await window.sb.from('profiles')
+          .select('nombre_completo, rol').eq('id', user.id).single();
+        if (!perfil || perfil.rol !== ROLES.PACIENTE) { window.location.href = 'dashboard.html'; return; }
+        miNombre = perfil.nombre_completo;
+        const { data: yo } = await window.sb.from('pacientes')
+          .select('id').eq('email', user.email).maybeSingle();
+        miId = yo ? yo.id : null;
+      } else {
+        const pacientes = await Store.list('pacientes');
+        miId = pacientes[0] ? pacientes[0].id : null;
+        miNombre = pacientes[0] ? pacientes[0].nombre_completo : 'Paciente Demo';
+      }
+
+      document.getElementById('nombre-paciente').textContent = miNombre;
+      document.getElementById('saludo').textContent = `¡Hola, ${miNombre.split(' ')[0]}!`;
+
+      const [turnos, facturas, notificaciones] = await Promise.all([
+        Store.list('turnos'), Store.list('facturas'), Store.list('notificaciones'),
+      ]);
+
+      const mios = lista => miId ? lista.filter(x => x.paciente_id === miId) : [];
+
+      const turnosEl = document.getElementById('mis-turnos');
+      const misTurnos = mios(turnos).sort((a, b) => (a.fecha + a.hora).localeCompare(b.fecha + b.hora));
+      turnosEl.innerHTML = misTurnos.length ? `<table><thead><tr><th>Fecha</th><th>Hora</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>
+        ${misTurnos.map(t => `<tr><td>${formatearFecha(t.fecha)}</td><td><b>${esc(t.hora)}</b></td><td>${esc(t.motivo || '—')}</td><td>${badge(ETIQUETAS_TURNO, t.estado)}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="vacio">No tenés turnos programados.</div>';
+
+      const facturasEl = document.getElementById('mis-facturas');
+      const misFacturas = mios(facturas);
+      facturasEl.innerHTML = misFacturas.length ? `<table><thead><tr><th>Número</th><th>Concepto</th><th>Monto</th><th>Vencimiento</th><th>Estado</th></tr></thead><tbody>
+        ${misFacturas.map(f => `<tr><td>${esc(f.numero || '—')}</td><td>${esc(f.concepto)}</td><td>₲ ${new Intl.NumberFormat('es-PY').format(f.monto)}</td><td>${formatearFecha(f.vencimiento)}</td><td>${f.estado === 'pagada' ? '<span class="badge badge-verde">Pagada</span>' : '<span class="badge badge-amarillo">Pendiente</span>'}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="vacio">No tenés facturas pendientes.</div>';
+
+      const mensajesEl = document.getElementById('mis-mensajes');
+      const misMensajes = mios(notificaciones);
+      mensajesEl.innerHTML = misMensajes.length ? `<table><thead><tr><th>Título</th><th>Mensaje</th><th>Fecha</th></tr></thead><tbody>
+        ${misMensajes.map(n => `<tr><td><b>${esc(n.titulo)}</b></td><td>${esc(n.mensaje)}</td><td>${formatearFecha(n.created_at)}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="vacio">No tenés mensajes.</div>';
+
+      document.getElementById('btn-salir').addEventListener('click', async () => {
+        if (window.sb) await window.sb.auth.signOut();
+        window.location.href = 'login.html';
+      });
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>

@@ -1,25 +1,45 @@
 # CliniSalud — Sistema de gestión para clínicas y consultorios (Paraguay)
 
-Webapp en español para clínicas y consultorios: agendas médicas, historias
-clínicas y prontuario, recetas, certificados médicos y notificaciones a pacientes.
+Sistema web en español, 100% en la nube, que centraliza la gestión administrativa,
+clínica y financiera de clínicas médicas, consultorios particulares, dentistas y
+profesionales de la salud en general.
 
-## Estado actual (v0.1)
+## Módulos
 
-- ✅ Landing page con botón "Ingresar al sistema" (`index.html`)
-- ✅ Login con usuario/contraseña (Supabase Auth) (`login.html`)
-- ✅ Dashboard según rol: médico, recepcionista, enfermería o administrador (`dashboard.html`)
-- ✅ Esquema de base de datos con roles y RLS (`sql/schema.sql`)
-- ⏳ Próximos pasos: gestión real de turnos, historia clínica, recetas/certificados PDF, notificaciones
+| Módulo | Qué hace |
+|---|---|
+| 📅 Agenda y atendimientos | Turnos por paciente, cambio de estados (pendiente, confirmado, sala de espera, atendido), sala de espera |
+| 👥 Pacientes | Registro completo (cédula, teléfono, alergias, etc.) y prontuario con consultas, turnos y facturas |
+| 💊 Recetas y certificados | Emisión desde el sistema e impresión con datos de la clínica y firma |
+| 💰 Facturación y finanzas | Facturas en guaraníes (₲), registro de pagos, ingresos del mes y montos por cobrar |
+| 📊 Reportes | Turnos del mes, tasa de confirmación, cancelaciones, ingresos y resumen por estado |
+| ✅ Tareas y avisos internos | Tareas con responsable y vencimiento, avisos dirigidos a un rol o a todo el equipo |
+| 🔔 Notificaciones | Mensajes al paciente: recordatorios, resultados e información del médico |
+| 👤 Portal del paciente | Acceso exclusivo del paciente: sus turnos, facturas y mensajes |
+
+## Roles
+
+Al ingresar, cada usuario ve su propio panel:
+
+| Rol | Acceso |
+|---|---|
+| Médico | Agenda, pacientes, historia clínica, recetas, certificados, tareas, avisos, notificaciones |
+| Recepcionista | Turnos, pacientes, facturación, sala de espera, tareas, avisos |
+| Enfermería | Agenda, pacientes, signos vitales, tareas, avisos |
+| Administrador | Todo: agendas, pacientes, facturación, reportes, usuarios, configuración |
+| Paciente | Portal del paciente (turnos, facturas y mensajes propios) |
 
 ## Estructura
 
 ```
-clinica-app/
+ProjetoKodiac/
 ├── index.html          Landing page
-├── login.html          Inicio de sesión
+├── login.html          Inicio de sesión del equipo
 ├── dashboard.html      Panel principal (según rol)
+├── portal.html         Portal del paciente
 ├── js/
 │   ├── config.js       Configuración de Supabase (URL y anon key)
+│   ├── store.js        Capa de datos (Supabase o modo demo con localStorage)
 │   └── dashboard.js    Lógica del dashboard y vistas por rol
 └── sql/
     └── schema.sql      Tablas, roles y políticas RLS para Supabase
@@ -45,15 +65,14 @@ clinica-app/
 
 ## Modo demo
 
-Mientras `js/config.js` no esté configurado, la app funciona con datos de
-ejemplo: el login acepta cualquier correo/contraseña y el dashboard muestra
-turnos, pacientes y usuarios de prueba.
+Mientras `js/config.js` no esté configurado, la app funciona con datos de ejemplo
+guardados en el navegador: el login acepta cualquier correo/contraseña y se pueden
+crear y editar turnos, pacientes, facturas, tareas y avisos normalmente. Los datos
+se guardan en `localStorage` del navegador.
 
-## Roles
+## Próximos pasos
 
-| Rol | Acceso |
-|---|---|
-| Médico | Agenda, historia clínica, recetas, certificados, notificaciones |
-| Recepcionista | Pacientes, turnos, sala de espera, avisos |
-| Enfermería | Agenda compartida, signos vitales, pacientes del día |
-| Administrador | Usuarios y roles, agendas, reportes, configuración |
+- Adaptar diseño a las pantallas de Google Stitch
+- Envío real de notificaciones (WhatsApp / correo)
+- Firma digital de recetas y certificados
+- Reportes exportables

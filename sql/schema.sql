@@ -1,8 +1,8 @@
--- ─── CliniSalud: esquema inicial de base de datos (Supabase / PostgreSQL) ────
+-- ─── CliniSalud: esquema de base de datos (Supabase / PostgreSQL) ────────────
 -- Ejecutá este script en el SQL Editor de tu proyecto de Supabase.
 
 -- ── Roles del sistema ────────────────────────────────────────────────────────
-create type rol_usuario as enum ('medico', 'recepcionista', 'enfermeria', 'administrador');
+create type rol_usuario as enum ('medico', 'recepcionista', 'enfermeria', 'administrador', 'paciente');
 
 -- ── Perfiles de usuarios (uno por cada usuario de Supabase Auth) ─────────────
 create table profiles (
@@ -42,7 +42,7 @@ create type estado_turno as enum ('pendiente', 'confirmado', 'sala_espera', 'ate
 
 create table turnos (
   id uuid primary key default gen_random_uuid(),
-  medico_id uuid not null references medicos (id),
+  medico_id uuid references medicos (id),
   paciente_id uuid not null references pacientes (id),
   fecha date not null,
   hora time not null,
@@ -58,7 +58,7 @@ create table consultas (
   id uuid primary key default gen_random_uuid(),
   turno_id uuid references turnos (id),
   paciente_id uuid not null references pacientes (id),
-  medico_id uuid not null references medicos (id),
+  medico_id uuid references medicos (id),
   fecha timestamptz not null default now(),
   motivo_consulta text,
   sintomas text,
@@ -76,7 +76,7 @@ create table recetas (
   id uuid primary key default gen_random_uuid(),
   consulta_id uuid references consultas (id),
   paciente_id uuid not null references pacientes (id),
-  medico_id uuid not null references medicos (id),
+  medico_id uuid references medicos (id),
   fecha date not null default current_date,
   contenido text not null,
   created_at timestamptz not null default now()
@@ -89,7 +89,7 @@ create table certificados (
   id uuid primary key default gen_random_uuid(),
   consulta_id uuid references consultas (id),
   paciente_id uuid not null references pacientes (id),
-  medico_id uuid not null references medicos (id),
+  medico_id uuid references medicos (id),
   tipo tipo_certificado not null default 'reposo',
   fecha date not null default current_date,
   dias_reposo int,
@@ -103,13 +103,54 @@ create type estado_notificacion as enum ('pendiente', 'enviada', 'leida');
 
 create table notificaciones (
   id uuid primary key default gen_random_uuid(),
-  paciente_id uuid not null references pacientes (id),
+  paciente_id uuid references pacientes (id),
   turno_id uuid references turnos (id),
   tipo tipo_notificacion not null default 'general',
   titulo text not null,
   mensaje text not null,
   estado estado_notificacion not null default 'pendiente',
   enviada_en timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- ── Facturación y finanzas ───────────────────────────────────────────────────
+create type estado_factura as enum ('pendiente', 'pagada', 'vencida', 'anulada');
+
+create table facturas (
+  id uuid primary key default gen_random_uuid(),
+  paciente_id uuid not null references pacientes (id),
+  consulta_id uuid references consultas (id),
+  numero text unique,
+  concepto text not null,
+  monto numeric(12,2) not null,
+  moneda text not null default 'PYG',
+  fecha date not null default current_date,
+  vencimiento date,
+  estado estado_factura not null default 'pendiente',
+  metodo_pago text,
+  pagada_en timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- ── Tareas y avisos internos ─────────────────────────────────────────────────
+create type estado_tarea as enum ('pendiente', 'en_progreso', 'completada');
+
+create table tareas (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  descripcion text,
+  responsable_id uuid references profiles (id),
+  fecha_vencimiento date,
+  estado estado_tarea not null default 'pendiente',
+  created_at timestamptz not null default now()
+);
+
+create table avisos (
+  id uuid primary key default gen_random_uuid(),
+  titulo text not null,
+  mensaje text not null,
+  para_rol rol_usuario,
+  autor_id uuid references profiles (id),
   created_at timestamptz not null default now()
 );
 
@@ -122,25 +163,22 @@ alter table consultas enable row level security;
 alter table recetas enable row level security;
 alter table certificados enable row level security;
 alter table notificaciones enable row level security;
+alter table facturas enable row level security;
+alter table tareas enable row level security;
+alter table avisos enable row level security;
 
--- Cada usuario puede ver y actualizar su propio perfil
 create policy "ver perfil propio" on profiles
   for select using (auth.uid() = id);
 create policy "actualizar perfil propio" on profiles
   for update using (auth.uid() = id);
-
--- Los usuarios autenticados pueden ver los perfiles (necesario para la agenda)
 create policy "ver perfiles de la clinica" on profiles
   for select to authenticated using (true);
 
--- Pacientes: solo lectura/escritura para usuarios autenticados
 create policy "pacientes para usuarios autenticados" on pacientes
   for all to authenticated using (true) with check (true);
-
--- Turnos, consultas, recetas, certificados: usuarios autenticados
 create policy "turnos para usuarios autenticados" on turnos
   for all to authenticated using (true) with check (true);
-create policy "consultas para medicos y enfermeria" on consultas
+create policy "consultas para usuarios autenticados" on consultas
   for all to authenticated using (true) with check (true);
 create policy "recetas para usuarios autenticados" on recetas
   for all to authenticated using (true) with check (true);
@@ -148,8 +186,13 @@ create policy "certificados para usuarios autenticados" on certificados
   for all to authenticated using (true) with check (true);
 create policy "notificaciones para usuarios autenticados" on notificaciones
   for all to authenticated using (true) with check (true);
+create policy "facturas para usuarios autenticados" on facturas
+  for all to authenticated using (true) with check (true);
+create policy "tareas para usuarios autenticados" on tareas
+  for all to authenticated using (true) with check (true);
+create policy "avisos para usuarios autenticados" on avisos
+  for all to authenticated using (true) with check (true);
 
--- Notificaciones: el rol de servicio puede marcarlas como enviadas (edge function)
 create policy "servicio actualiza notificaciones" on notificaciones
   for update to service_role using (true);
 
