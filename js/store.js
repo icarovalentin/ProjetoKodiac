@@ -11,7 +11,7 @@ const Store = {
       if (error) { console.error('Supabase:', error.message); return []; }
       return data || [];
     }
-    return this._datos()[tabla] || [];
+    return this._estado()[tabla] || [];
   },
 
   async insert(tabla, registro) {

@@ -523,6 +523,9 @@ function mostrarVista(id) {
   (VISTAS[id] || VISTAS.inicio)().then(html => {
     vista.innerHTML = html;
     conectarAcciones();
+  }).catch(err => {
+    console.error(err);
+    vista.innerHTML = `<div class="panel"><h2>Error al cargar esta vista</h2><p class="nota">${esc(err.message)}</p></div>`;
   });
 }
 
