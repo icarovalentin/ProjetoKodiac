@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { id: 'agenda', nombre: 'Agenda', icono: 'calendar_month', pag: 'agenda.html', roles: ['medico', 'recepcionista', 'enfermeria', 'administrador'] },
   { id: 'pacientes', nombre: 'Pacientes', icono: 'group', pag: 'pacientes.html', roles: ['medico', 'recepcionista', 'enfermeria', 'administrador'] },
   { id: 'preconsulta', nombre: 'Pre-consulta', icono: 'monitor_heart', pag: 'preconsulta.html', roles: ['medico', 'recepcionista', 'enfermeria', 'administrador'] },
+  { id: 'estudios', nombre: 'Laboratorio', icono: 'labs', pag: 'estudios.html', roles: ['medico', 'recepcionista', 'enfermeria', 'administrador'] },
   { id: 'consultas', nombre: 'Consultas', icono: 'stethoscope', pag: 'consultas.html', roles: ['medico', 'administrador'] },
   { id: 'recetas', nombre: 'Recetas y Certificados', icono: 'prescriptions', pag: 'recetas.html', roles: ['medico', 'administrador'] },
   { id: 'facturacion', nombre: 'Facturación', icono: 'receipt_long', pag: 'facturacion.html', roles: ['recepcionista', 'administrador'] },
@@ -151,10 +152,13 @@ const Shell = {
     let notificaciones = [];
     try { notificaciones = (await Store.list('notificaciones')).filter(n => n.estado === 'pendiente'); } catch (e) { notificaciones = []; }
     cont.innerHTML = `
-      <div class="h-16 bg-surface-container-lowest border-b border-outline-variant flex items-center gap-4 px-6">
+      <div class="h-16 bg-surface-container-lowest border-b border-outline-variant flex items-center gap-3 md:gap-4 px-4 md:px-6">
+        <button id="shell-menu" class="lg:hidden p-2 rounded-lg hover:bg-surface-container-low" title="Menú">
+          <span class="material-symbols-outlined text-on-surface-variant">menu</span>
+        </button>
         <div>
           <p class="text-sm font-bold text-on-surface leading-tight">Sucursal Central</p>
-          <p class="text-[11px] text-on-surface-variant">Asunción, Paraguay</p>
+          <p class="text-[11px] text-on-surface-variant hidden sm:block">Asunción, Paraguay</p>
         </div>
         <span class="hidden md:inline-flex items-center px-2.5 py-1 rounded-full bg-primary-fixed text-primary text-[11px] font-bold">${esc(ROL_NOMBRES[u.rol] || u.rol)}</span>
         <span class="hidden lg:inline text-xs text-on-surface-variant capitalize">${fechaLarga(hoyISO())}</span>
@@ -167,16 +171,16 @@ const Shell = {
           <span class="material-symbols-outlined text-on-surface-variant">notifications</span>
           ${notificaciones.length ? '<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-alerta"></span>' : ''}
         </button>
-        <div class="flex items-center gap-2 pl-2 border-l border-outline-variant">
+        <button id="shell-perfil" class="flex items-center gap-2 pl-2 md:pl-3 md:border-l border-outline-variant" title="Mi perfil">
           <div class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">${esc(this._iniciales(u.nombre))}</div>
-          <div class="hidden md:block leading-tight">
+          <div class="hidden md:block leading-tight text-left">
             <p class="text-xs font-bold text-on-surface">${esc(u.nombre)}</p>
             <p class="text-[10px] text-on-surface-variant">${esc(ROL_NOMBRES[u.rol] || u.rol)}</p>
           </div>
-          <button id="shell-salir" class="p-2 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error ml-1" title="Cerrar sesión">
-            <span class="material-symbols-outlined text-[20px]">logout</span>
-          </button>
-        </div>
+        </button>
+        <button id="shell-salir" class="p-2 rounded-full hover:bg-error-container text-on-surface-variant hover:text-error" title="Cerrar sesión">
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+        </button>
       </div>`;
     document.getElementById('shell-salir').addEventListener('click', async () => {
       if (window.sb) await window.sb.auth.signOut();
@@ -185,6 +189,8 @@ const Shell = {
       window.location.href = 'index.html';
     });
     document.getElementById('shell-campana').addEventListener('click', () => this.mostrarNotificaciones(notificaciones));
+    document.getElementById('shell-perfil').addEventListener('click', () => this.mostrarPerfil());
+    document.getElementById('shell-menu').addEventListener('click', () => this.alternarMenu());
     const buscar = document.getElementById('shell-buscar-global');
     if (buscar) {
       buscar.addEventListener('keydown', async (ev) => {
@@ -197,6 +203,68 @@ const Shell = {
         else alert('No se encontró ningún paciente con "' + q + '".');
       });
     }
+  },
+
+  alternarMenu() {
+    const barra = document.getElementById('shell-sidebar');
+    let fondo = document.getElementById('shell-menu-fondo');
+    const abierto = !barra.classList.contains('-translate-x-full');
+    barra.classList.toggle('-translate-x-full', abierto);
+    if (!fondo) {
+      fondo = document.createElement('div');
+      fondo.id = 'shell-menu-fondo';
+      fondo.className = 'fixed inset-0 bg-black/40 z-30 hidden lg:hidden';
+      fondo.addEventListener('click', () => this.alternarMenu());
+      document.body.appendChild(fondo);
+    }
+    fondo.classList.toggle('hidden', abierto);
+  },
+
+  mostrarPerfil() {
+    const u = this.usuario;
+    const esDemo = !window.sb;
+    Shell.modal({
+      titulo: 'Mi perfil',
+      contenido: `
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center text-lg font-extrabold">${esc(this._iniciales(u.nombre))}</div>
+          <div>
+            <p class="font-extrabold">${esc(u.nombre)}</p>
+            <p class="text-xs text-on-surface-variant">${esc(ROL_NOMBRES[u.rol] || u.rol)} · ${esc(u.email)}</p>
+          </div>
+        </div>
+        <div class="rounded-xl bg-surface-container-low px-4 py-3 text-xs mb-4 ${esDemo ? 'text-amber' : 'text-secondary'}">
+          ${esDemo ? 'Modo demo: el nombre se guarda solo en este navegador.' : 'Autenticado con Supabase.'}
+        </div>
+        <div class="space-y-3">
+          <div><label class="text-xs font-bold text-on-surface-variant">Nombre para mostrar</label>
+            <input id="perfil-nombre" value="${esc(u.nombre)}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+          ${window.sb ? `<div><label class="text-xs font-bold text-on-surface-variant">Nueva contraseña (opcional)</label>
+            <input id="perfil-pass" type="password" placeholder="Mínimo 6 caracteres" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>` : ''}
+        </div>`,
+      acciones: `
+        <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+        <button id="perfil-guardar" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar</button>`,
+    });
+    document.getElementById('perfil-guardar').addEventListener('click', async () => {
+      const nombre = document.getElementById('perfil-nombre').value.trim();
+      if (!nombre) { Shell.aviso('El nombre no puede quedar vacío.', 'error'); return; }
+      if (esDemo) {
+        sessionStorage.setItem('demo_usuario', nombre.includes('@') ? nombre : nombre + '@demo.local');
+      } else if (window.sb) {
+        const pass = document.getElementById('perfil-pass').value;
+        if (pass) {
+          if (pass.length < 6) { Shell.aviso('La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
+          const { error } = await window.sb.auth.updateUser({ password: pass });
+          if (error) { Shell.aviso('No se pudo cambiar la contraseña: ' + error.message, 'error'); return; }
+        }
+        try { await window.sb.from('profiles').update({ nombre_completo: nombre }).eq('id', (await window.sb.auth.getUser()).data.user.id); } catch (e) {}
+      }
+      sessionStorage.setItem('demo_rol', u.rol);
+      Shell.cerrarModal();
+      Shell.aviso('Perfil actualizado.');
+      setTimeout(() => window.location.reload(), 800);
+    });
   },
 
   async mostrarNotificaciones(notificaciones) {

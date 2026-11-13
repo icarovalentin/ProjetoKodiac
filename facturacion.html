@@ -18,9 +18,9 @@
   <script src="js/shell.js"></script>
 </head>
 <body class="bg-surface text-on-surface">
-  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40"></aside>
-  <div id="shell-topbar" class="fixed top-0 left-64 right-0 z-40"></div>
-  <main id="shell-main" class="ml-64 pt-16 p-6"></main>
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40 -translate-x-full lg:translate-x-0 transition-transform duration-300"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-0 lg:left-64 right-0 z-40"></div>
+  <main id="shell-main" class="pt-16 p-4 md:p-6 lg:ml-64"></main>
 
   <script>
     window.PAGINA_ACTIVA = 'facturacion';
@@ -81,7 +81,7 @@
             ${[['todas', 'Todas'], ['pagada', 'Pagadas'], ['pendiente', 'Pendientes'], ['anulada', 'Anuladas']].map(([v, n]) => `
               <button data-filtro="${v}" class="px-4 py-2 rounded-lg text-xs font-bold ${this.filtro === v ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}">${n}</button>`).join('')}
           </div>
-          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-hidden">
+          <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
                 <tr class="bg-surface-container-low text-left text-xs uppercase tracking-wide text-on-surface-variant">

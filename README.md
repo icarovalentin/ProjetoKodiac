@@ -40,6 +40,7 @@ ProjetoKodiac/
 ├── agenda.html         Agenda de turnos (grilla día/semana + panel nueva cita)
 ├── pacientes.html      Pacientes: listado, alta con validación de C.I. y ficha/prontuario
 ├── preconsulta.html    Cola del día y registro de signos vitales
+├── estudios.html       Laboratorio y estudios (solicitud, resultados, avisos al paciente)
 ├── consultas.html      Historia clínica con formato SOAP
 ├── recetas.html        Recetas, certificados y órdenes de estudios (impresión A4 membretada)
 ├── facturacion.html    Facturas, cobros y caja del día (guaraníes ₲)

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laboratorio y Estudios — Sanatorio Serena</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tokens.js"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+  </style>
+  <script src="js/config.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/shell.js"></script>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside id="shell-sidebar" class="fixed left-0 top-0 bottom-0 w-64 bg-surface-container-lowest border-r border-outline-variant z-40 -translate-x-full lg:translate-x-0 transition-transform duration-300"></aside>
+  <div id="shell-topbar" class="fixed top-0 left-0 lg:left-64 right-0 z-40"></div>
+  <main id="shell-main" class="pt-16 p-4 md:p-6 lg:ml-64"></main>
+
+  <script>
+    window.PAGINA_ACTIVA = 'estudios';
+
+    const Laboratorio = {
+      estudios: [], pacientes: [],
+      filtroEstado: 'todos',
+      filtroTipo: 'todos',
+
+      async cargar() {
+        [this.estudios, this.pacientes] = await Promise.all([Store.list('estudios'), Store.list('pacientes')]);
+      },
+
+      paciente(id) { return this.pacientes.find(p => p.id === id); },
+
+      filtrados() {
+        return this.estudios
+          .filter(e => this.filtroEstado === 'todos' || e.estado === this.filtroEstado)
+          .filter(e => this.filtroTipo === 'todos' || e.tipo === this.filtroTipo)
+          .sort((a, b) => String(b.fecha_solicitud).localeCompare(String(a.fecha_solicitud)));
+      },
+
+      async render() {
+        const main = document.getElementById('shell-main');
+        const pendientes = this.estudios.filter(e => e.estado === 'pendiente').length;
+        const lista = this.filtrados();
+        main.innerHTML = `
+          <div class="flex flex-wrap items-center gap-3 mb-5">
+            <div>
+              <h1 class="text-2xl font-extrabold">Laboratorio y Estudios</h1>
+              <p class="text-sm text-on-surface-variant">${this.estudios.length} estudios · ${pendientes} pendiente(s) de resultado</p>
+            </div>
+            <div class="flex-1"></div>
+            <select id="filtro-tipo" class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2.5 text-sm">
+              <option value="todos">Todos los tipos</option>
+              <option value="laboratorio" ${this.filtroTipo === 'laboratorio' ? 'selected' : ''}>Laboratorio</option>
+              <option value="cardiologia" ${this.filtroTipo === 'cardiologia' ? 'selected' : ''}>Cardiología</option>
+              <option value="imagen" ${this.filtroTipo === 'imagen' ? 'selected' : ''}>Imagen</option>
+            </select>
+            <select id="filtro-estado" class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2.5 text-sm">
+              <option value="todos">Todos los estados</option>
+              <option value="pendiente" ${this.filtroEstado === 'pendiente' ? 'selected' : ''}>Pendientes</option>
+              <option value="listo" ${this.filtroEstado === 'listo' ? 'selected' : ''}>Listos</option>
+            </select>
+            <button id="btn-nuevo-estudio" class="flex items-center gap-2 bg-primary text-on-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow hover:opacity-90">
+              <span class="material-symbols-outlined text-[18px]">add</span>Solicitar Estudio
+            </button>
+          </div>
+          <div class="space-y-4">
+            ${lista.length ? lista.map(e => {
+              const p = this.paciente(e.paciente_id);
+              return `
+              <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5">
+                <div class="flex flex-wrap items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl ${e.tipo === 'cardiologia' ? 'bg-error-container text-on-error-container' : e.tipo === 'imagen' ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-primary-fixed text-primary'} flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[20px]">${e.tipo === 'cardiologia' ? 'ecg_heart' : e.tipo === 'imagen' ? 'radiology' : 'science'}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-bold">${esc(e.nombre)}</p>
+                    <p class="text-xs text-on-surface-variant">${esc(p ? p.nombre_completo : 'Paciente')} · C.I. ${esc(p ? p.cedula_identidad : '—')} · solicitado el ${formatearFecha(e.fecha_solicitud)}</p>
+                  </div>
+                  ${badgeEstado(e.estado)}
+                  <div class="flex gap-1">
+                    ${e.estado === 'pendiente' ? `<button data-resultado="${e.id}" class="px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container text-xs font-bold hover:opacity-80">Registrar resultado</button>` : ''}
+                    ${e.estado === 'listo' ? `<button data-aviso="${e.id}" class="px-3 py-1.5 rounded-lg bg-primary-fixed text-primary text-xs font-bold hover:opacity-80">Notificar al paciente</button>` : ''}
+                    <button data-eliminar="${e.id}" class="p-2 rounded-lg hover:bg-error-container text-on-surface-variant hover:text-error" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+                  </div>
+                </div>
+                ${e.resultado ? `<div class="mt-3 rounded-xl bg-surface-container-low px-4 py-3">
+                  <p class="text-[10px] font-extrabold uppercase tracking-wide text-secondary mb-1">Resultado (${formatearFecha(e.fecha_resultado)})</p>
+                  <p class="text-sm">${esc(e.resultado)}</p>
+                </div>` : ''}
+              </div>`;
+            }).join('') : Shell.vacio('No hay estudios con estos filtros.', 'labs')}
+          </div>`;
+        document.getElementById('filtro-tipo').addEventListener('change', ev => { this.filtroTipo = ev.target.value; this.render(); });
+        document.getElementById('filtro-estado').addEventListener('change', ev => { this.filtroEstado = ev.target.value; this.render(); });
+        document.getElementById('btn-nuevo-estudio').addEventListener('click', () => this.modalNuevo());
+        document.querySelectorAll('[data-resultado]').forEach(b => b.addEventListener('click', () => this.modalResultado(b.dataset.resultado)));
+        document.querySelectorAll('[data-eliminar]').forEach(b => b.addEventListener('click', async () => {
+          if (!confirm('¿Eliminar este estudio?')) return;
+          await Store.remove('estudios', b.dataset.eliminar);
+          await Shell.registrarAuditoria('eliminar_estudio', 'Estudio eliminado');
+          Shell.aviso('Estudio eliminado.');
+          await this.cargar();
+          this.render();
+        }));
+        document.querySelectorAll('[data-aviso]').forEach(b => b.addEventListener('click', async () => {
+          const e = this.estudios.find(x => x.id === b.dataset.aviso);
+          await Store.insert('notificaciones', {
+            paciente_id: e.paciente_id,
+            tipo: 'resultado',
+            titulo: 'Resultado disponible',
+            mensaje: `Su estudio "${e.nombre}" ya está disponible en el Sanatorio Serena.`,
+            estado: 'enviada',
+            enviada_en: new Date().toISOString(),
+          });
+          await Shell.registrarAuditoria('notificar_resultado', `Resultado de ${e.nombre} notificado al paciente`);
+          Shell.aviso('Notificación enviada al paciente.');
+          await this.cargar();
+          this.render();
+        }));
+      },
+
+      modalNuevo() {
+        Shell.modal({
+          titulo: 'Solicitar Estudio',
+          contenido: `
+            <form id="form-estudio" class="space-y-3">
+              <div><label class="text-xs font-bold text-on-surface-variant">Paciente *</label>
+                <select name="paciente_id" required class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="">Seleccione…</option>
+                  ${this.pacientes.map(p => `<option value="${p.id}">${esc(p.nombre_completo)} — C.I. ${esc(p.cedula_identidad)}</option>`).join('')}
+                </select></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Tipo</label>
+                <select name="tipo" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white">
+                  <option value="laboratorio">Laboratorio</option>
+                  <option value="cardiologia">Cardiología</option>
+                  <option value="imagen">Imagen</option>
+                </select></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Estudio *</label>
+                <input name="nombre" required placeholder="Ej. Hemograma completo, ECG, Radiografía de tórax…" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+            </form>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-estudio" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Solicitar</button>`,
+        });
+        document.getElementById('guardar-estudio').addEventListener('click', async () => {
+          const datos = Object.fromEntries(new FormData(document.getElementById('form-estudio')).entries());
+          if (!datos.paciente_id || !datos.nombre.trim()) { Shell.aviso('Complete paciente y nombre del estudio.', 'error'); return; }
+          await Store.insert('estudios', {
+            paciente_id: datos.paciente_id, tipo: datos.tipo, nombre: datos.nombre.trim(),
+            estado: 'pendiente', fecha_solicitud: hoyISO(), fecha_resultado: null, resultado: '',
+          });
+          await Shell.registrarAuditoria('solicitar_estudio', `${datos.nombre} solicitado`);
+          Shell.cerrarModal();
+          Shell.aviso('Estudio solicitado.');
+          await this.cargar();
+          this.render();
+        });
+      },
+
+      modalResultado(id) {
+        const e = this.estudios.find(x => x.id === id);
+        if (!e) return;
+        Shell.modal({
+          titulo: 'Registrar resultado',
+          contenido: `
+            <div class="space-y-3">
+              <div class="rounded-xl bg-surface-container-low px-4 py-3">
+                <p class="font-bold">${esc(e.nombre)}</p>
+                <p class="text-xs text-on-surface-variant">${esc(this.paciente(e.paciente_id)?.nombre_completo || '')} · ${formatearFecha(e.fecha_solicitud)}</p>
+              </div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Fecha del resultado</label>
+                <input id="res-fecha" type="date" value="${hoyISO()}" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white"></div>
+              <div><label class="text-xs font-bold text-on-surface-variant">Resultado / observaciones</label>
+                <textarea id="res-texto" rows="4" class="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm bg-white" placeholder="Valores obtenidos e interpretación…"></textarea></div>
+            </div>`,
+          acciones: `
+            <button data-cerrar-modal class="px-4 py-2 rounded-lg text-sm font-semibold border border-outline-variant hover:bg-surface-container-low">Cancelar</button>
+            <button id="guardar-resultado" class="px-4 py-2 rounded-lg text-sm font-bold bg-secondary text-on-secondary hover:opacity-90">Guardar resultado</button>`,
+        });
+        document.getElementById('guardar-resultado').addEventListener('click', async () => {
+          const texto = document.getElementById('res-texto').value.trim();
+          if (!texto) { Shell.aviso('Escriba el resultado del estudio.', 'error'); return; }
+          await Store.update('estudios', e.id, {
+            estado: 'listo',
+            fecha_resultado: document.getElementById('res-fecha').value,
+            resultado: texto,
+          });
+          await Shell.registrarAuditoria('registrar_resultado', `Resultado de ${e.nombre} registrado`);
+          Shell.cerrarModal();
+          Shell.aviso('Resultado registrado.');
+          await this.cargar();
+          this.render();
+        });
+      },
+    };
+
+    async function PaginaIniciar() {
+      await Laboratorio.cargar();
+      await Laboratorio.render();
+    }
+  </script>
+</body>
+</html>
